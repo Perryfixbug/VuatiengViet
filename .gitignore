@@ -1,0 +1,58 @@
+# ----------------------------
+# Maven build
+# ----------------------------
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+
+# ----------------------------
+# VS Code
+# ----------------------------
+.vscode/
+.settings/
+
+# ----------------------------
+# IntelliJ / NetBeans (phòng khi mở bằng IDE khác)
+# ----------------------------
+.idea/
+*.iml
+nbproject/
+build/
+dist/
+
+# ----------------------------
+# OS generated files
+# ----------------------------
+.DS_Store
+Thumbs.db
+
+# ----------------------------
+# Logs and temporary files
+# ----------------------------
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# ----------------------------
+# Java
+# ----------------------------
+*.class
+*.jar
+*.war
+*.ear
+
+# ----------------------------
+# JavaFX cache
+# ----------------------------
+/out/
+/bin/
+/modules/
+
+# ----------------------------
+# Environment / credentials
+# ----------------------------
+.env
+*.properties.local
+*.secret
