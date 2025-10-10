@@ -54,5 +54,5 @@ Thumbs.db
 # Environment / credentials
 # ----------------------------
 .env
-*.properties.local
+*.properties
 *.secret

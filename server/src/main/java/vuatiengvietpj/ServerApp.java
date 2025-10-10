@@ -1,4 +1,4 @@
-package vuatiengvietpj.server;
+package vuatiengvietpj;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
