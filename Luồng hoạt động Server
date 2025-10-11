@@ -1,0 +1,25 @@
+ Yêu cầu từ Client
+    ↓
+ TcpServer.java (Chấp nhận kết nối)
+    ↓
+ ClientHandler.java (Xử lý luồng I/O)
+    ↓
+ MessageProcessor.java (Phân tích tin nhắn thô)
+    ↓
+ ProtocolHandler.java (Điều hướng lệnh)
+    ↓
+ CommandType.java (Kiểm tra loại lệnh)
+    ↓
+ Tầng Controller (Logic nghiệp vụ)
+    ↓
+ Tầng DAO (Thao tác cơ sở dữ liệu)
+    ↓
+ Tầng Model (Thực thể dữ liệu)
+    ↓
+ Tầng Util (Phiên, Cấu hình, Redis)
+    ↓
+ MessageFormatter.java (Định dạng phản hồi)
+    ↓
+ ClientHandler.java (Gửi phản hồi)
+    ↓
+ Phản hồi tới Client
