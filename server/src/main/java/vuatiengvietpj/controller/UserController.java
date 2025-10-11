@@ -23,39 +23,41 @@ public class UserController {
     // // public User viewInfor() {
 
     // // }
-    public String sigup(User user) {
-        int code = userDAO.checkUser(user);
-        if (code == 0) {
-            userDAO.create(user);
-            return "Đăng ký tài khoản thành công, hãy đăng nhập để chơi gem";
+    // public String sigup(User user) {
+    // int code = userDAO.checkUser(user);
+    // if (code == 0) {
+    // userDAO.create(user);
+    // return "Đăng ký tài khoản thành công, hãy đăng nhập để chơi gem";
 
-        } else {
-            return "Email đã có người sử dụng";
-        }
-    }
+    // } else {
+    // return "Email đã có người sử dụng";
+    // }
+    // }
 
-    public String changePassword(User user) {
-        userDAO.save(user);
-        return "Thay đổi mật khẩu thành công";
-    }
+    // public String changePassword(User user) {
+    // userDAO.save(user);
+    // return "Thay đổi mật khẩu thành công";
+    // }
 
-    public List<User> getListUser() {
-        return userDAO.getListUser();
-    }
+    // public List<User> getListUser() {
+    // return userDAO.getListUser();
+    // }
 
-    public String login(User user) {
-        User userCheck = userDAO.getUserbyEmail(user.getEmail());
-        if (userCheck == null || user.getPassword().equals(userCheck.getPassword())) {
-            return "Tài khoản hoặc mật khẩu không đúng";
-        }
-        userCheck.setPassword(null);
-        return "Đăng nhập thành công vào tài khoản " + userCheck.toString();
-    }
+    // public String login(User user) {
+    // User userCheck = userDAO.getUserbyEmail(user.getEmail());
+    // if (userCheck == null || user.getPassword().equals(userCheck.getPassword()))
+    // {
+    // return "Tài khoản hoặc mật khẩu không đúng";
+    // }
+    // userCheck.setPassword(null);
+    // return "Đăng nhập thành công vào tài khoản " + userCheck.toString();
+    // }
 
-    public static void main(String[] args) {
+    // public static void main(String[] args) {
 
-        UserController userController = new UserController();
-        User user = new User(0, "", "TMH@gmail.com", BCrypt.hashpw("hieu123", BCrypt.gensalt(12)));
-        System.out.println(userController.login(user));
-    }
+    // UserController userController = new UserController();
+    // User user = new User(0, "", "TMH@gmail.com", BCrypt.hashpw("hieu123",
+    // BCrypt.gensalt(12)));
+    // System.out.println(userController.login(user));
+    // }
 }

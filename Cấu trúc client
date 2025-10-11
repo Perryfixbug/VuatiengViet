@@ -1,0 +1,176 @@
+📁 Dự Án Client Vua Tiếng Việt (JavaFX)
+│
+├── 📄 pom.xml                          # Cấu hình Maven & JavaFX dependencies
+│
+├── 📁 src/main/
+│   ├── 📄 module-info.java             # Cấu hình Java Module
+│   │                                   # - requires javafx.controls
+│   │                                   # - requires javafx.fxml
+│   │                                   # - exports vuatiengvietpj
+│   │
+│   ├── 📁 java/vuatiengvietpj/
+│   │   │
+│   │   ├── 🚀 App.java                 # ĐIỂM KHỞI CHẠY JAVAFX
+│   │   │                               # - Khởi động ứng dụng JavaFX
+│   │   │                               # - Load FXML chính
+│   │   │                               # - Cấu hình cửa sổ chính
+│   │   │                               # - Xử lý đóng ứng dụng
+│   │   │
+│   │   │
+│   │   ├── 📁 controller/              # 🎮 TẦNG ĐIỀU KHIỂN NGHIỆP VỤ
+│   │   │   ├── ClientController.java   # 🌐 Quản lý kết nối server
+│   │   │   │                           # - Kết nối TCP tới server
+│   │   │   │                           # - Gửi/nhận tin nhắn
+│   │   │   │                           # - Xử lý mất kết nối
+│   │   │   │                           # - Singleton pattern
+│   │   │   │
+│   │   │   ├── UserController.java     # 👤 Điều khiển người dùng
+│   │   │   │                           # - Đăng nhập/Đăng xuất
+│   │   │   │                           # - Đăng ký tài khoản
+│   │   │   │                           # - Thay đổi mật khẩu
+│   │   │   │                           # - Quản lý thông tin cá nhân
+│   │   │   │
+│   │   │   ├── RoomController.java     # 🏠 Điều khiển phòng chơi
+│   │   │   │                           # - Tạo phòng mới
+│   │   │   │                           # - Tham gia/Rời phòng
+│   │   │   │                           # - Hiển thị danh sách phòng
+│   │   │   │                           # - Cập nhật trạng thái phòng
+│   │   │   │
+│   │   │   ├── GameController.java     # 🎲 Điều khiển trò chơi
+│   │   │   │                           # - Bắt đầu game
+│   │   │   │                           # - Gửi từ của người chơi
+│   │   │   │                           # - Hiển thị bảng điểm
+│   │   │   │                           # - Timer đếm ngược
+│   │   │   │
+│   │   │   └── DictionaryController.java # 📚 Điều khiển từ điển
+│   │   │                               # - Kiểm tra từ hợp lệ
+│   │   │                               # - Tra cứu nghĩa từ
+│   │   │
+│   │   ├── 📁 model/                   # 📊 MÔ HÌNH DỮ LIỆU CLIENT
+│   │   │   ├── User.java               # Model người dùng
+│   │   │   │                           # - id, họTên, email
+│   │   │   │                           # - trạngThái, điểmCao nhất
+│   │   │   │                           # - Thông tin profile
+│   │   │   │
+│   │   │   ├── Room.java               # Model phòng chơi
+│   │   │   │                           # - id, tên, sốNgười tối đa
+│   │   │   │                           # - trạngThái, chủPhòng
+│   │   │   │                           # - Danh sách thành viên
+│   │   │   │
+│   │   │   ├── Player.java             # Model người chơi
+│   │   │   │                           # - id, tên, điểm hiện tại
+│   │   │   │                           # - trạngTháiGame, thứHạng
+│   │   │   │                           # - Thống kê trong game
+│   │   │   │
+│   │   │   └── ClientSession.java      # Model phiên client
+│   │   │                               # - sessionId, userId
+│   │   │                               # - trạngTháiKếtNối, roomId hiện tại
+│   │   │                               # - Thông tin phiên làm việc
+│   │   │
+│   │   ├── 📁 view/                    # 🎨 CONTROLLERS GIAO DIỆN
+│   │   │   └── controller/             # Controllers cho từng màn hình
+│   │   │       │                       # (Cần tạo thêm)
+│   │   │       ├── LoginController.java        # Màn hình đăng nhập
+│   │   │       │                               # - Xử lý form đăng nhập
+│   │   │       │                               # - Validation input
+│   │   │       │                               # - Chuyển scene sau login
+│   │   │       │
+│   │   │       ├── RegisterController.java     # Màn hình đăng ký
+│   │   │       │                               # - Form đăng ký tài khoản
+│   │   │       │                               # - Kiểm tra mật khẩu
+│   │   │       │                               # - Xác nhận đăng ký
+│   │   │       │
+│   │   │       ├── MainMenuController.java     # Menu chính
+│   │   │       │                               # - Điều hướng chức năng
+│   │   │       │                               # - Hiển thị thông tin user
+│   │   │       │                               # - Menu navigation
+│   │   │       │
+│   │   │       ├── RoomListController.java     # Danh sách phòng
+│   │   │       │                               # - Load danh sách phòng
+│   │   │       │                               # - Tìm kiếm phòng
+│   │   │       │                               # - Tham gia phòng
+│   │   │       │
+│   │   │       ├── CreateRoomController.java   # Tạo phòng
+│   │   │       │                               # - Form tạo phòng mới
+│   │   │       │                               # - Cài đặt phòng
+│   │   │       │                               # - Xác nhận tạo
+│   │   │       │
+│   │   │       ├── GameRoomController.java     # Phòng chơi game
+│   │   │       │                               # - Giao diện game chính
+│   │   │       │                               # - Nhập từ vựng
+│   │   │       │                               # - Hiển thị điểm real-time
+│   │   │       │                               # - Chat với người chơi
+│   │   │       │
+│   │   │       ├── LeaderboardController.java  # Bảng xếp hạng
+│   │   │       │                               # - Hiển thị top players
+│   │   │       │                               # - Lọc theo thời gian
+│   │   │       │                               # - Thống kê cá nhân
+│   │   │       │
+│   │   │       └── SettingsController.java     # Cài đặt
+│   │   │                                       # - Cài đặt giao diện
+│   │   │                                       # - Âm thanh, theme
+│   │   │                                       # - Thông tin tài khoản
+│   │   │
+│   │   └── 📁 util/                    # 🔧 TIỆN ÍCH CLIENT
+│   │       ├── TcpClient.java          # TCP Client connection
+│   │       │                           # - Kết nối socket tới server
+│   │       │                           # - Gửi/nhận tin nhắn TCP
+│   │       │                           # - Xử lý timeout & retry
+│   │       │                           # - Thread-safe operations
+│   │       │
+│   │       ├── MessageHandler.java     # Xử lý tin nhắn giao thức
+│   │       │                           # - Parse server responses
+│   │       │                           # - Format client requests
+│   │       │                           # - Message validation
+│   │       │                           # - Protocol constants
+│   │       │
+│   │       ├── SceneManager.java       # Quản lý chuyển đổi scene
+│   │       │                           # - Load FXML files
+│   │       │                           # - Switch scenes với animation
+│   │       │                           # - Scene history & back navigation
+│   │       │                           # - Loading screens
+│   │       │
+│   │       ├── ConfigManager.java      # Quản lý cấu hình client
+│   │       │                           # - Đọc config.properties
+│   │       │                           # - Lưu user preferences
+│   │       │                           # - Default values
+│   │       │                           # - Runtime settings
+│   │       │
+│   │       └── ValidationUtils.java    # Kiểm tra dữ liệu nhập
+│   │                                   # - Email format validation
+│   │                                   # - Password strength check
+│   │                                   # - Input sanitization
+│   │                                   # - Form validation helpers
+│   │
+│   └── 📁 resources/vuatiengvietpj/
+│       ├── 📄 primary.fxml             # FXML mặc định (có thể xóa)
+│       ├── 📄 secondary.fxml           # FXML mặc định (có thể xóa)
+│       │
+│       ├── 📁 fxml/                    # 🎨 CÁC FILE GIAO DIỆN
+│       │   │                           # (Cần tạo)
+│       │   ├── login.fxml              # Màn hình đăng nhập
+│       │   ├── register.fxml           # Màn hình đăng ký
+│       │   ├── main-menu.fxml          # Menu chính
+│       │   ├── room-list.fxml          # Danh sách phòng
+│       │   ├── create-room.fxml        # Tạo phòng mới
+│       │   ├── game-room.fxml          # Phòng chơi game
+│       │   ├── leaderboard.fxml        # Bảng xếp hạng
+│       │   └── settings.fxml           # Cài đặt
+│       │
+│       ├── 📁 images/                  # 🖼️ HÌNH ẢNH & ICON
+│       │   ├── logo.png                # Logo ứng dụng
+│       │   ├── background.jpg          # Hình nền
+│       │   └── icons/                  # Thư mục icon
+│       │       ├── user.png
+│       │       ├── room.png
+│       │       ├── game.png
+│       │       └── settings.png
+│       │
+│       └── 📁 sounds/                  # 🔊 ÂM THANH
+│           ├── click.mp3               # Âm thanh click
+│           ├── success.mp3             # Âm thanh thành công
+│           └── error.mp3               # Âm thanh lỗi
+│
+└── 📁 target/                          # 🏗️ KẾT QUẢ BUILD
+    ├── classes/                        # File .class đã biên dịch
+    └── test-classes/                   # File test đã biên dịch

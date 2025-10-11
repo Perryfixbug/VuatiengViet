@@ -1,0 +1,19 @@
+🚀 App.java (Khởi động JavaFX)
+    ↓
+🔧 SceneManager.loadScene("login.fxml")
+    ↓
+🎨 LoginController (Xử lý đăng nhập)
+    ↓ 
+🎮 UserController.login() 
+    ↓
+🌐 ClientController.connect()
+    ↓
+🔧 TcpClient.sendMessage() → MessageHandler
+    ↓
+🔧 SceneManager.switchTo("main-menu.fxml")
+    ↓
+🎨 MainMenuController → RoomListController
+    ↓
+🎨 GameRoomController (Chơi game)
+    ↓
+🎨 LeaderboardController (Kết quả)

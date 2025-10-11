@@ -1,0 +1,167 @@
+📁 Dự Án Server Vua Tiếng Việt
+│
+├── 📄 pom.xml                          # Cấu hình Maven & dependencies
+│
+├── 📁 src/main/
+│   ├── 📁 java/vuatiengvietpj/
+│   │   │
+│   │   ├── 🚀 ServerApp.java           # ĐIỂM KHỞI CHẠY CHÍNH
+│   │   │                               # - Khởi động máy chủ
+│   │   │                               # - Kiểm tra kết nối database
+│   │   │                               # - Khởi tạo các thành phần
+│   │   │                               
+│   │   │
+│   │   ├── 📁 communication/           # 🌐 TẦNG GIAO TIẾP MẠNG
+│   │   │   ├── TcpServer.java          # Máy chủ TCP chính
+│   │   │   │                           # - Lắng nghe trên cổng 8080
+│   │   │   │                           # - Chấp nhận kết nối từ client
+│   │   │   │                           # - Quản lý pool luồng
+│   │   │   │                           # - Điều khiển vòng đời server
+│   │   │   │
+│   │   │   ├── ClientHander.java       # Xử lý từng client
+│   │   │   │                           # - Quản lý luồng I/O
+│   │   │   │                           # - Xử lý tin nhắn từ client
+│   │   │   │                           # - Theo dõi phiên đăng nhập
+│   │   │   │                           # - Dọn dẹp kết nối
+│   │   │   │
+│   │   │   └── MessageProcessor.java   # Xử lý tin nhắn thô
+│   │   │                               # - Phân tích dữ liệu socket
+│   │   │                               # - Kiểm tra tính hợp lệ tin nhắn
+│   │   │                               # - Định dạng phản hồi
+│   │   │
+│   │   ├── 📁 protocol/                # 📋 TẦNG GIAO THỨC ỨNG DỤNG
+│   │   │   ├── CommandType.java        # Enum định nghĩa các lệnh
+│   │   │   │                           # - ĐĂNG_NHẬP, ĐĂNG_XUẤT, ĐĂNG_KÝ
+│   │   │   │                           # - TẠO_PHÒNG, VÀO_PHÒNG
+│   │   │   │                           # - BẮT_ĐẦU_GAME, GỬI_TỪ
+│   │   │   │                           # - KIỂM_TRA_TỪ, PING, THOÁT
+│   │   │   │
+│   │   │   ├── ProtocolHandler.java    # Xử lý logic các lệnh
+│   │   │   │                           # - Phân tích chuỗi lệnh
+│   │   │   │                           # - Điều hướng tới controller
+│   │   │   │                           # - Kiểm tra tham số
+│   │   │   │                           # - Xác thực quyền truy cập
+│   │   │   │
+│   │   │   └── MessageFormatter.java   # Định dạng tin nhắn chuẩn
+│   │   │                               # - Định dạng yêu cầu
+│   │   │                               # - Định dạng phản hồi
+│   │   │                               # - Hằng số giao thức
+│   │   │
+│   │   ├── 📁 controller/              # 🎮 TẦNG LOGIC NGHIỆP VỤ
+│   │   │   ├── ServerController.java   # Điều khiển server chính
+│   │   │   │                           # - Trạng thái server
+│   │   │   │                           # - Quản lý client
+│   │   │   │                           # - Giám sát hệ thống
+│   │   │   │
+│   │   │   ├── UserController.java     # 👤 Quản lý người dùng
+│   │   │   │                           # - Đăng nhập/Đăng xuất
+│   │   │   │                           # - Đăng ký tài khoản
+│   │   │   │                           # - Đổi mật khẩu
+│   │   │   │                           # - Kiểm tra phiên đăng nhập
+│   │   │   │
+│   │   │   ├── RoomController.java     # 🏠 Quản lý phòng chơi
+│   │   │   │                           # - Tạo/Xóa phòng
+│   │   │   │                           # - Vào/Rời phòng
+│   │   │   │                           # - Theo dõi trạng thái phòng
+│   │   │   │                           # - Quản lý người chơi
+│   │   │   │
+│   │   │   ├── GameController.java     # 🎲 Logic trò chơi
+│   │   │   │                           # - Bắt đầu/Kết thúc game
+│   │   │   │                           # - Nhận từ của người chơi
+│   │   │   │                           # - Tính điểm
+│   │   │   │                           # - Bảng xếp hạng
+│   │   │   │
+│   │   │   └── DictionaryController.java # 📚 Xử lý từ điển
+│   │   │                               # - Kiểm tra từ hợp lệ
+│   │   │                               # - Tra cứu từ điển
+│   │   │                               # - Gợi ý từ
+│   │   │
+│   │   ├── 📁 DAO/                     # 🗄️ TẦNG TRUY CẬP DỮ LIỆU
+│   │   │   ├── DAO.java                # Interface/Class DAO cơ sở
+│   │   │   │                           # - Các thao tác CRUD chung
+│   │   │   │                           # - Kết nối cơ sở dữ liệu
+│   │   │   │                           # - Quản lý giao dịch
+│   │   │   │
+│   │   │   ├── UserDAO.java            # Thao tác dữ liệu người dùng
+│   │   │   │                           # - CRUD người dùng
+│   │   │   │                           # - Truy vấn xác thực
+│   │   │   │                           # - Quản lý hồ sơ
+│   │   │   │
+│   │   │   ├── RoomDAO.java            # Thao tác dữ liệu phòng
+│   │   │   │                           # - CRUD phòng chơi
+│   │   │   │                           # - Truy vấn thành viên phòng
+│   │   │   │                           # - Cập nhật trạng thái phòng
+│   │   │   │
+│   │   │   └── DictionaryDAO.java      # Thao tác dữ liệu từ điển
+│   │   │                               # - Truy vấn từ
+│   │   │                               # - Quản lý từ điển
+│   │   │                               # - Kiểm tra từ hợp lệ
+│   │   │
+│   │   ├── 📁 model/                   # 📊 TẦNG MÔ HÌNH DỮ LIỆU
+│   │   │   ├── User.java               # Thực thể người dùng
+│   │   │   │                           # - id, họTên, email, mậtKhẩu
+│   │   │   │                           # - ngàyĐăngKý, lầnCuốiĐăngNhập
+│   │   │   │                           # - Phương thức kiểm tra hợp lệ
+│   │   │   │
+│   │   │   ├── Room.java               # Thực thể phòng chơi
+│   │   │   │                           # - id, tên, sốNgườiTối đa, trạngThái
+│   │   │   │                           # - thôngTinChủPhòng, ngàyTạo
+│   │   │   │                           # - Quản lý trạng thái phòng
+│   │   │   │
+│   │   │   ├── Player.java             # Thực thể người chơi trong game
+│   │   │   │                           # - idNgườiChơi, idPhòng, điểm
+│   │   │   │                           # - trạngThái, thờiGianVào
+│   │   │   │                           # - Theo dõi hiệu suất game
+│   │   │   │
+│   │   │   ├── Session.java            # Thực thể phiên đăng nhập
+│   │   │   │                           # - idPhiên, idNgườiDùng, IP
+│   │   │   │                           # - thờiGianTạo/TruyCapCuối
+│   │   │   │                           # - Quản lý trạng thái phiên
+│   │   │   │
+│   │   │   ├── Dictionary.java         # Thực thể từ trong từ điển
+│   │   │   │                           # - idTừ, từ, nghĩa
+│   │   │   │                           # - danh mục, độKhó
+│   │   │   │                           # - Thuộc tính của từ
+│   │   │   │
+│   │   │   ├── ScoreBoard.java         # Thực thể bảng điểm
+│   │   │   │                           # - idGame, idNgườiChơi, điểm
+│   │   │   │                           # - sốTừĐãGửi, thờiGian
+│   │   │   │                           # - Tính toán xếp hạng
+│   │   │   │
+│   │   │   └── ChallengePack.java      # Thực thể thử thách game
+│   │   │                               # - idThửThách, độKhó
+│   │   │                               # - giớiHạnThờiGian, sốLượngTừ
+│   │   │                               # - Cấu hình thử thách
+│   │   │
+│   │   └── 📁 util/                    # 🔧 TẦNG TIỆN ÍCH
+│   │       ├── ConfigManager.java      # Quản lý cấu hình
+│   │       │                           # - Đọc config.properties
+│   │       │                           # - Lấy giá trị cấu hình
+│   │       │                           # - Xử lý giá trị mặc định
+│   │       │
+│   │       ├── RedisManager.java       # Pool kết nối Redis
+│   │       │                           # - Quản lý kết nối Redis
+│   │       │                           # - Cấu hình pool
+│   │       │                           # - Thao tác cache
+│   │       │
+│   │       ├── SessionManager.java     # Quản lý phiên đăng nhập
+│   │       │                           # - Tạo/hủy phiên đăng nhập
+│   │       │                           # - Kiểm tra phiên hợp lệ
+│   │       │                           # - Lưu trữ phiên trên Redis
+│   │       │                           # - Dọn dẹp phiên hết hạn
+│   │       │
+│   │       └── SessionFilter.java      # Bộ lọc xác thực
+│   │                                   # - Kiểm tra phiên hợp lệ
+│   │                                   # - Kiểm tra quyền truy cập
+│   │                                   # - Trích xuất thông tin người dùng
+│   │
+│   └── 📁 resources/
+│       └── config.properties           #  File cấu hình
+│                                       # - Cài đặt cơ sở dữ liệu
+│                                       # - Cấu hình Redis
+│                                       # - Cổng server & giới hạn
+│                                       # - Thời gian hết hạn phiên
+│
+└── 📁 target/                          # KẾT QUẢ BUILD
+    ├── classes/                        # File .class đã biên dịch
+    └── test-classes/                   # File test đã biên dịch

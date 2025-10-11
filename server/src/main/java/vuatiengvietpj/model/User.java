@@ -1,30 +1,61 @@
 package vuatiengvietpj.model;
 
 import java.io.Serializable;
+import java.time.Instant;
 
 public class User implements Serializable {
-    private long id;
+    private Long id;
     private String fullName;
     private String email;
     private String password;
+    private Instant createAt;
+    private Instant updateAt;
+    private Long totalScore;
 
-    public User(long id, String fullName, String email, String password) {
+    public User() {
+    }
+
+    public User(Long id, String fullName, String email, String password, Instant createAt, Instant updateAt,
+            Long totalScore) {
         this.id = id;
         this.fullName = fullName;
         this.email = email;
         this.password = password;
-    }
-
-    public long getId() {
-        return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
+        this.createAt = createAt;
+        this.updateAt = updateAt;
+        this.totalScore = totalScore;
     }
 
     public String getFullName() {
         return fullName;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Instant getCreateAt() {
+        return createAt;
+    }
+
+    public void setCreateAt(Instant createAt) {
+        this.createAt = createAt;
+    }
+
+    public Instant getUpdateAt() {
+        return updateAt;
+    }
+
+    public void setUpdateAt(Instant updateAt) {
+        this.updateAt = updateAt;
+    }
+
+    public Long getTotalScore() {
+        return totalScore;
+    }
+
+    public void setTotalScore(Long totalScore) {
+        this.totalScore = totalScore;
     }
 
     public void setFullName(String fullName) {
@@ -49,7 +80,12 @@ public class User implements Serializable {
 
     @Override
     public String toString() {
-        return "User [id=" + id + ", fullName=" + fullName + ", email=" + email + ", password=" + password + "]";
+        return "User [id=" + id + ", fullName=" + fullName + ", email=" + email + ", password=" + password
+                + ", createAt=" + createAt + ", updateAt=" + updateAt + ", totalScore=" + totalScore + "]";
+    }
+
+    public Long getId() {
+        return id;
     }
 
 }

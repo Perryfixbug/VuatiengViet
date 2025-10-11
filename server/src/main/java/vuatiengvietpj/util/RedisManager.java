@@ -3,28 +3,82 @@ package vuatiengvietpj.util;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Jedis;
-import java.time.Duration;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public class RedisManager {
     private static JedisPool pool;
-    private static final String HOST = System.getenv().getOrDefault("REDIS_HOST", "localhost");
-    private static final int PORT = Integer.parseInt(System.getenv().getOrDefault("REDIS_PORT", "6379"));
-    private static final int TIMEOUT_MS = Integer.parseInt(System.getenv().getOrDefault("REDIS_TIMEOUT_MS", "2000"));
+    private static final Gson GSON = new GsonBuilder()
+            .setDateFormat("yyyy-MM-dd HH:mm:ss")
+            .create();
 
     static {
-        JedisPoolConfig cfg = new JedisPoolConfig();
-        cfg.setMaxTotal(16);
-        cfg.setMaxIdle(8);
-        cfg.setMinIdle(1);
-        pool = new JedisPool(cfg, HOST, PORT, TIMEOUT_MS);
+        try {
+            String host = ConfigManager.get("redis.host", "localhost");
+            int port = ConfigManager.getInt("redis.port", 6379);
+            int timeout = ConfigManager.getInt("redis.timeout", 2000);
+            String password = ConfigManager.get("redis.password");
+            int database = ConfigManager.getInt("redis.database", 0);
+
+            JedisPoolConfig config = new JedisPoolConfig();
+            config.setMaxTotal(ConfigManager.getInt("redis.pool.maxTotal", 16));
+            config.setMaxIdle(ConfigManager.getInt("redis.pool.maxIdle", 8));
+            config.setMinIdle(ConfigManager.getInt("redis.pool.minIdle", 2));
+            config.setTestOnBorrow(true);
+            config.setTestOnReturn(true);
+
+            if (password != null && !password.isEmpty()) {
+                pool = new JedisPool(config, host, port, timeout, password, database);
+            } else {
+                pool = new JedisPool(config, host, port, timeout);
+            }
+        } catch (Exception e) {
+            System.err.println("Redis connection failed: " + e.getMessage());
+        }
     }
 
     public static Jedis getResource() {
-        return pool.getResource();
+        return pool != null ? pool.getResource() : null;
     }
 
     public static void close() {
-        if (pool != null)
+        if (pool != null && !pool.isClosed()) {
             pool.close();
+        }
+    }
+
+    public static <T> void setCache(String key, T object, int ttlSeconds) {
+        try (Jedis jedis = getResource()) {
+            if (jedis != null) {
+                String json = GSON.toJson(object);
+                jedis.setex(key, ttlSeconds, json);
+            }
+        } catch (Exception e) {
+            System.err.println("Redis set error: " + e.getMessage());
+        }
+    }
+
+    public static <T> T getCache(String key, Class<T> clazz) {
+        try (Jedis jedis = getResource()) {
+            if (jedis != null) {
+                String json = jedis.get(key);
+                if (json != null && !json.isEmpty()) {
+                    return GSON.fromJson(json, clazz);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Redis get error: " + e.getMessage());
+        }
+        return null;
+    }
+
+    public static void deleteCache(String key) {
+        try (Jedis jedis = getResource()) {
+            if (jedis != null) {
+                jedis.del(key);
+            }
+        } catch (Exception e) {
+            System.err.println("Redis delete error: " + e.getMessage());
+        }
     }
 }
