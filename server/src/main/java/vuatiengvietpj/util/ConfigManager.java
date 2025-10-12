@@ -9,7 +9,7 @@ public class ConfigManager {
 
     static {
         try (InputStream is = ConfigManager.class.getClassLoader()
-                .getResourceAsStream("config.properties")) {
+                .getResourceAsStream("vuatiengvietpj/config.properties")) {
             if (is != null) {
                 props.load(is);
             }
