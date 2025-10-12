@@ -1,4 +1,4 @@
-package vuatiengvietpj.DAO;
+package vuatiengvietpj.dao;
 
 import vuatiengvietpj.model.User;
 import java.sql.Connection;
