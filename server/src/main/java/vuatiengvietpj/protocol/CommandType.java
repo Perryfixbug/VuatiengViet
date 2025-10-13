@@ -1,5 +1,95 @@
 package vuatiengvietpj.protocol;
 
-public class CommandType {
+public enum CommandType {
+    LOGIN(false, "LOGIN"),
+    LOGOUT(true, "LOGOUT"),
+    SIGNUP(false, "SIGNUP"),
+    FGPASS(false, "FGPASS"),
+    CREATE(false, "CREATE"),
+    JOIN(false, "JOIN"),
+    EDIT(false, "EDIT"),
+    OUT(false, "OUT"),
+    GETALL(false, "GETALL");
 
+    private final boolean requiresAuth;
+    private final String token;
+
+    // check lệnh này cần xác thực session hay là ko
+    private final boolean requireAuth() {
+        return requiresAuth;
+
+    }
+
+    CommandType(boolean requireAuth, String token) {
+        this.requiresAuth = requireAuth;
+        this.token = token;
+    }
+
+    public boolean isRequiresAuth() {
+        return requiresAuth;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    // hàm chuyển đổi chuỗi string thành chuỗi lệnh
+    public static CommandType toCommandType(String chuoiLenh) {
+        if (chuoiLenh == null) {
+            return null;
+        }
+        String s = chuoiLenh.trim().toUpperCase();
+        switch (s) {
+            case "LOGIN":
+                return LOGIN;
+
+            case "LOGOUT":
+                return LOGOUT;
+            case "SIGNUP":
+                return SIGNUP;
+            case "FGPASS":
+                return FGPASS;
+            case "CREATE":
+                return CREATE;
+            case "JOIN":
+                return JOIN;
+            case "EDIT":
+                return EDIT;
+            case "OUT":
+                return OUT;
+            case "GETALL":
+                return GETALL;
+            default:
+                return null;
+        }
+    }
+
+    // chuyển cmt thành string
+    public static String toString(CommandType cmt) {
+        if (cmt == null)
+            return null;
+        switch (cmt) {
+            case LOGIN:
+                return "LOGIN";
+
+            case LOGOUT:
+                return "LOGOUT";
+            case SIGNUP:
+                return "SIGNUP";
+            case FGPASS:
+                return "FGPASS";
+            case CREATE:
+                return "CREATE";
+            case JOIN:
+                return "JOIN";
+            case EDIT:
+                return "EDIT";
+            case OUT:
+                return "OUT";
+            case GETALL:
+                return "GETALL";
+            default:
+                return null;
+        }
+    }
 }

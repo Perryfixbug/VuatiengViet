@@ -15,11 +15,6 @@ public abstract class DAO {
                 String username = ConfigManager.get("DB_USER");
                 String password = ConfigManager.get("DB_PASS");
                 String driver = ConfigManager.get("db.driver", "com.mysql.cj.jdbc.Driver");
-
-                System.out.println("DB_URL: " + url);
-                System.out.println("DB_USER: " + username);
-                System.out.println("DB_PASS: " + password);
-
                 Class.forName(driver);
                 if (password == null || password.isEmpty()) {
                     con = DriverManager.getConnection(url, username, null);

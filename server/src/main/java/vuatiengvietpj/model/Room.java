@@ -5,13 +5,22 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.gson.annotations.Expose;
+
 public class Room implements Serializable {
+    @Expose
     private Long id;
+    @Expose
     private Long ownerId;
+    @Expose
     private int maxPlayer;
+    @Expose
     private List<Player> players = new ArrayList<>();
+    @Expose
     private Instant createAt;
+    @Expose
     private ChallengePack cp;
+    @Expose
     private String status;
 
     public Room() {
@@ -89,5 +98,5 @@ public class Room implements Serializable {
         return "Room [id=" + id + ", ownerId=" + ownerId + ", maxPlayer=" + maxPlayer + ", players=" + players
                 + ", createAt=" + createAt + ", cp=" + cp + ", status=" + status + "]";
     }
-
+    
 }
