@@ -1,4 +1,4 @@
-package vuatiengvietpj.DAO;
+package vuatiengvietpj.dao;
 
 import vuatiengvietpj.model.*;
 import java.sql.*;

@@ -18,13 +18,14 @@ public class Room implements Serializable {
 
     }
 
-    public Room(Long ownerId, int maxPlayer, List<Player> players, Instant createAt, ChallengePack cp, String status) {
+    public Room(Long id, Long ownerId, int maxPlayer, Instant createAt, String status, ChallengePack cp, List<Player> players) {
+        this.id = id;
         this.ownerId = ownerId;
         this.maxPlayer = maxPlayer;
-        this.players = players;
         this.createAt = createAt;
-        this.cp = cp;
         this.status = status;
+        this.cp = cp;
+        this.players = players;
     }
 
     public Long getId() {

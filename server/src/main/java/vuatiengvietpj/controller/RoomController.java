@@ -2,47 +2,114 @@ package vuatiengvietpj.controller;
 
 import java.util.*;
 import java.time.*;
-import vuatiengvietpj.DAO.*;
+import java.io.IOException;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import com.google.gson.*;
+
+import vuatiengvietpj.dao.*;
 import vuatiengvietpj.model.*;
-public class RoomController {
+public class RoomController extends ServerController {
+    private String action;
+    private byte[] payload;
     private RoomDAO roomDAO;
+
+    public RoomController(Socket clientSocket, String action, byte[] payload) throws IOException {
+        super(clientSocket);
+        this.action = action;
+        this.payload = payload;
+        roomDAO = new RoomDAO();
+    }
+
+    @Override
+    protected void process() throws IOException {
+        String requestData = new String(payload, StandardCharsets.UTF_8);
+
+        System.out.println("Nhận yêu cầu Room: " + action + " | payload: " + requestData);
+
+        if ("CREATE".equalsIgnoreCase(action)) {
+            // Parse payload and create room
+            Long ownerId = Long.parseLong(requestData);
+            Room room = createRoom(ownerId);
+            if (room != null) {
+                sendBytes(("Room created: " + room.getId()).getBytes(StandardCharsets.UTF_8));
+            } else {
+                sendBytes("Failed to create room".getBytes(StandardCharsets.UTF_8));
+            }
+        } else if ("JOIN".equalsIgnoreCase(action)) {
+            // Parse payload and join room
+            String[] data = requestData.split(",");
+            Long roomId = Long.parseLong(data[0]);
+            Long userId = Long.parseLong(data[1]);
+            boolean success = joinRoom(roomId, userId);
+            if (success) {
+                sendBytes("Joined room successfully".getBytes(StandardCharsets.UTF_8));
+            } else {
+                sendBytes("Failed to join room".getBytes(StandardCharsets.UTF_8));
+            }
+        } else if ("EDIT".equalsIgnoreCase(action)) {
+            // Parse payload and edit room
+            String[] data = requestData.split(",");
+            Long roomId = Long.parseLong(data[0]);
+            Long ownerId = data[1].isEmpty() ? null : Long.parseLong(data[1]);
+            String status = data[2].isEmpty() ? null : data[2];
+            Integer maxPlayer = data[3].isEmpty() ? null : Integer.parseInt(data[3]);
+            Long challengePackId = data[4].isEmpty() ? null : Long.parseLong(data[4]);
+            Room room = editRoom(roomId, ownerId, status, maxPlayer, challengePackId);
+            if (room != null) {
+                sendBytes(("Room edited: " + room.getId()).getBytes(StandardCharsets.UTF_8));
+            } else {
+                sendBytes("Failed to edit room".getBytes(StandardCharsets.UTF_8));
+            }
+        } else if ("OUT".equalsIgnoreCase(action)) {
+            // Parse payload and leave room
+            String[] data = requestData.split(",");
+            Long roomId = Long.parseLong(data[0]);
+            Long userId = Long.parseLong(data[1]);
+            outRoom(roomId, userId);
+            sendBytes("Left room successfully".getBytes(StandardCharsets.UTF_8));
+        } else if ("GETALL".equalsIgnoreCase(action)) {
+            // Get all rooms
+            List<Room> rooms = getAllRooms();
+            Gson gson = new Gson();
+            sendBytes(gson.toJson(rooms).getBytes(StandardCharsets.UTF_8));
+        } else {
+            sendBytes("Room: action không hợp lệ".getBytes(StandardCharsets.UTF_8));
+        }
+
+    }
+
+    
     // Sinh ngẫu nhiên 1 mã challenge pack từ DB
-    private ChallengePack generateChallengePack() {
+    public ChallengePack generateChallengePack() {
         ChallengePackDAO cpDAO = new ChallengePackDAO();
         int totalCP = cpDAO.getNumberCP();
         if (totalCP == 0) return null;
         Random rand = new Random();
         return cpDAO.getChallengePackById((long) (rand.nextInt(totalCP) + 1));
     }
-    //Tạo 1 phòng mới theo thời gian hiện tại
+    //Tạo 1 mã phòng mới theo thời gian hiện tại
     private Long generateRoomId() {
         return (long) System.currentTimeMillis();
     }
-
-    public RoomController() {
-        roomDAO = new RoomDAO();
-    }
     // Danh sách phòng
-    public List<vuatiengvietpj.model.Room> getAllRooms() {
+    public List<Room> getAllRooms() {
         return roomDAO.getAllRooms();
     }
     // Thông tin phòng theo ID
-    public vuatiengvietpj.model.Room getRoomById(Long roomId) {
+    public Room getRoomById(Long roomId) {
         return roomDAO.getRoomById(roomId);
     }
     // Tạo phòng mới
-    public Room createRoom(Long ownerId, Long challengePackId) {
-        ChallengePack cp = null;
-        if (challengePackId == null || ownerId == null) {
-            return null;
-        }
-        cp = new ChallengePackDAO().getChallengePackById(challengePackId);
+    public Room createRoom(Long ownerId) {
         List<Player> players = new ArrayList<>();
         Player player = new Player();
         player.setUserId(ownerId);
         players.add(player);
+
+        // Tạo ID thủ công bằng generateRoomId
         Long roomId = generateRoomId();
-        Room room = new Room(roomId, ownerId, 4, players, Instant.now(), cp, "pending");
+        Room room = new Room(roomId, ownerId, 4, Instant.now(), "pending", null, players);
         roomDAO.createRoom(room);
         return room;
     }
@@ -69,9 +136,8 @@ public class RoomController {
         if (ownerId != null) room.setOwnerId(ownerId);
         if (status != null) room.setStatus(status);
         if (maxPlayer != null) room.setMaxPlayer(maxPlayer);
-        if (maxPlayer > 8) return null; // Giới hạn số người chơi tối đa là 8
-        ChallengePack newCP = generateChallengePack();
-        roomDAO.updateRoom(roomId, room.getOwnerId(), room.getStatus(), room.getMaxPlayer(), newCP.getId());
+        if (maxPlayer > 8) maxPlayer = 8;
+        roomDAO.updateRoom(roomId, room.getOwnerId(), room.getStatus(), room.getMaxPlayer());
         return room;
     }
     // Rời phòng
@@ -96,7 +162,7 @@ public class RoomController {
             // Nếu người rời là chủ phòng thì đổi chủ phòng mới
             } else if (room.getOwnerId().equals(userId)) {
                 room.setOwnerId(players.get(0).getUserId());
-                roomDAO.updateRoom(roomId, room.getOwnerId(), null, null, null);
+                roomDAO.updateRoom(roomId, room.getOwnerId(), null, null);
             }
         }
         return;
