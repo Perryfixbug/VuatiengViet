@@ -1,28 +1,39 @@
 package vuatiengvietpj;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.net.ServerSocket;
+import java.net.Socket;
+import vuatiengvietpj.controller.UserController;
 
 public class ServerApp {
     public static void main(String[] args) {
-        String url = "jdbc:mysql://localhost:3307/vuatiengvietdb"; // đổi port & db name nếu cần
-        String user = "root";
-        String pass = "****";
+        try (ServerSocket serverSocket = new ServerSocket(2208)) {
+            System.out.println("🚀 Server started on port 2208...");
+            System.out.println("Đợi client kết nối...\n");
 
-        try (Connection conn = DriverManager.getConnection(url, user, pass)) {
-            System.out.println("✅ Kết nối MySQL thành công!");
+            while (true) {
+                Socket client = serverSocket.accept();
 
-            String sql = "SELECT * FROM users";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            ResultSet rs = stmt.executeQuery();
+                // ✅ Tạo thread xử lý từng client
+                new Thread(() -> {
+                    try {
+                        System.out.println("📞 Client kết nối từ: " + client.getInetAddress());
 
-            while (rs.next()) {
-                System.out.println("User: " + rs.getString("username"));
+                        // ✅ Tạo UserController - nó sẽ tự động xử lý Request/Response
+                        UserController controller = new UserController(client);
+                        controller.handleClient();
+
+                    } catch (Exception e) {
+                        System.err.println("❌ Lỗi tạo controller: " + e.getMessage());
+                        try {
+                            client.close();
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }).start();
             }
 
         } catch (Exception e) {
+            System.err.println("❌ Lỗi server: " + e.getMessage());
             e.printStackTrace();
         }
     }

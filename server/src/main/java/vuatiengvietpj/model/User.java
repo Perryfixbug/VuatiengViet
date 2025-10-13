@@ -1,16 +1,25 @@
 package vuatiengvietpj.model;
 
+import com.google.gson.annotations.Expose;
 import java.io.Serializable;
 import java.time.Instant;
 
+import com.google.gson.annotations.Expose;
+
 public class User implements Serializable {
+    @Expose
     private Long id;
+    @Expose
     private String fullName;
+    @Expose
     private String email;
+    @Expose
     private String password;
     private Instant createAt;
     private Instant updateAt;
+    @Expose
     private Long totalScore;
+    private static final long serialVersionUID = 1L;
 
     public User() {
     }

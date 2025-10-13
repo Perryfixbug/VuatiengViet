@@ -5,252 +5,224 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import org.mindrot.jbcrypt.BCrypt;
 
-public class UserDAO {
-    // private String dbUrl =
-    // "jdbc:mysql://localhost:3306/VUATIENGVIET?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC&useSSL=false";
-    // private String dbClass = "com.mysql.cj.jdbc.Driver";
-    // private String username = "root";
-    // private String password = "123456";
-    // private Connection con;
+public class UserDAO extends DAO {
+    // create user trong db
+    public boolean createUser(User user) {
+        String sql = "INSERT INTO users (full_name, email, password, create_at, update_at, total_score) VALUES (?, ?, ?, ?, ?, ?)";
+        try {
+            getDBconnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            Instant now = Instant.now();
+            stmt.setString(1, user.getFullName());
+            stmt.setString(2, user.getEmail());
+            stmt.setString(3, user.getPassword());
+            stmt.setTimestamp(4, Timestamp.from(now));
+            stmt.setTimestamp(5, Timestamp.from(now));
+            stmt.setLong(6, user.getTotalScore() != null ? user.getTotalScore() : 0L);
 
-    // public void getDBconnection() {
-    // try {
-    // // chỉ tạo connection khi chưa có hoặc đã đóng
-    // if (con == null || con.isClosed()) {
-    // Class.forName(dbClass);
-    // con = DriverManager.getConnection(dbUrl, username, password);
-    // }
-    // Class.forName(dbClass);
-    // con = DriverManager.getConnection(dbUrl, username, password);
-    // } catch (Exception ex) {
-    // ex.printStackTrace();
-    // }
-    // }
+            int result = stmt.executeUpdate();
+            stmt.close();
+            return result > 0;
+        } catch (SQLException e) {
+            System.err.println("Error creating user: " + e.getMessage());
+            return false;
+        } finally {
+            closeConnection();
+        }
+    }
 
-    // public void closeConnection() {
-    // try {
-    // if (con != null && !con.isClosed())
-    // con.close();
-    // } catch (Exception ignored) {
-    // }
-    // }
+    public boolean changePassword(String email, String newPassword) {
+        String sql = "UPDATE users SET password = ?, update_at = ? WHERE email = ?";
 
-    // // hàm kiểm tra trạng thái tài khoản
-    // public int checkUser(User user) {
-    // try {
-    // String sql = "SELECT password FROM users WHERE email = ?";
-    // try (PreparedStatement ps = con.prepareStatement(sql)) {
-    // ps.setString(1, user.getEmail());
-    // try (ResultSet rs = ps.executeQuery()) {
-    // if (!rs.next()) {
-    // return 0; // user không tồn tại
-    // }
-    // String dbPass = rs.getString("password");
-    // if (dbPass.equals(user.getPassword())) {
-    // return 2; // thành công
-    // } else {
-    // return 1; // sai mật khẩu
-    // }
-    // }
-    // }
-    // } catch (Exception e) {
-    // e.printStackTrace();
-    // }
-    // return 3;
-    // }
+        try {
+            getDBconnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            stmt.setString(1, newPassword);
+            stmt.setTimestamp(2, Timestamp.from(Instant.now()));
+            stmt.setString(3, email);
 
-    // public List<User> getListUser() {
-    // List<User> users = new ArrayList<>();
-    // String sql = "SELECT id, full_Name, email, password FROM users";
-    // try {
-    // getDBconnection();
-    // if (con == null)
-    // return users;
+            int result = stmt.executeUpdate();
+            stmt.close();
 
-    // try (PreparedStatement ps = con.prepareStatement(sql);
-    // ResultSet rs = ps.executeQuery()) {
-    // while (rs.next()) {
-    // User u = new User(rs.getLong("id"), rs.getString("full_Name"),
-    // rs.getString("email"),
-    // rs.getString("password"));
-    // users.add(u);
-    // }
-    // }
-    // } catch (Exception ex) {
-    // ex.printStackTrace();
-    // } finally {
-    // closeConnection();
-    // }
-    // return users;
-    // }
+            return result > 0;
 
-    // public boolean create(User user) {
-    // try {
-    // getDBconnection();
-    // if (user.getId() == 0) // trường hợp id = 0 là khi gửi lên user đăng ký mới
-    // {
-    // long newId = System.currentTimeMillis();
-    // user.setId(newId);
-    // if (checkUser(user) == 0) // user chưa tồn tại
-    // {
-    // String insertSql = "INSERT INTO users(id, full_Name, email, password) VALUES
-    // (?, ?, ?, ?)";
-    // try (PreparedStatement ps = con.prepareStatement(insertSql)) {
-    // ps.setLong(1, user.getId());
-    // ps.setString(2, user.getFullName());
-    // ps.setString(3, user.getEmail());
-    // ps.setString(4, user.getPassword());
-    // int affected = ps.executeUpdate();
-    // return affected > 0;
-    // }
+        } catch (SQLException e) {
+            System.err.println("Error changing password: " + e.getMessage());
+            return false;
+        } finally {
+            closeConnection();
+        }
+    }
 
-    // }
+    public boolean updateScore(Long userId, Long newScore) {
+        String sql = "UPDATE users SET total_score = ?, update_at = ? WHERE id = ?";
 
-    // }
-    // } catch (Exception e) {
+        try {
+            getDBconnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
 
-    // System.err.println(e);
+            stmt.setLong(1, newScore);
+            stmt.setTimestamp(2, Timestamp.from(Instant.now()));
+            stmt.setLong(3, userId);
 
-    // }
-    // return false;
-    // }
+            int result = stmt.executeUpdate();
+            stmt.close();
 
-    // public boolean save(User user) {
-    // try {
-    // String updateSql = "UPDATE users SET full_Name = ?, email = ?, password = ?
-    // WHERE id = ?";
-    // try (PreparedStatement ps = con.prepareStatement(updateSql)) {
-    // ps.setString(1, user.getFullName());
-    // ps.setString(2, user.getEmail());
-    // ps.setString(3, user.getPassword());
-    // ps.setLong(4, user.getId());
-    // int affected = ps.executeUpdate();
-    // return affected > 0;
-    // }
-    // } catch (Exception e) {
+            return result > 0;
 
-    // System.err.println(e);
-    // return false;
-    // }
-    // }
+        } catch (SQLException e) {
+            System.err.println("Error updating score: " + e.getMessage());
+            return false;
+        } finally {
+            closeConnection();
+        }
+    }
 
-    // public List<User> findByEmail(String email) {
-    // List<User> users = new ArrayList<>();
-    // if (email == null || email.isEmpty())
-    // return users;
+    public User findById(Long id) {
+        String sql = "SELECT * FROM users WHERE id = ?";
 
-    // String sql = "SELECT id, full_Name, email, password FROM users WHERE
-    // LOWER(email) LIKE ?";
-    // try {
-    // getDBconnection();
-    // if (con == null)
-    // return users;
+        try {
+            getDBconnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            stmt.setLong(1, id);
 
-    // try (PreparedStatement ps = con.prepareStatement(sql)) {
-    // ps.setString(1, "%" + email.toLowerCase() + "%");
-    // try (ResultSet rs = ps.executeQuery()) {
-    // while (rs.next()) {
-    // User u = new User(rs.getLong("id"), rs.getString("full_Name"),
-    // rs.getString("email"),
-    // rs.getString("password"));
-    // users.add(u);
-    // }
-    // }
-    // }
-    // } catch (Exception ex) {
-    // ex.printStackTrace();
-    // } finally {
-    // closeConnection();
-    // }
-    // return users;
-    // }
+            ResultSet rs = stmt.executeQuery();
 
-    // public List<User> findByName(String name) {
-    // List<User> users = new ArrayList<>();
-    // if (name == null || name.isEmpty())
-    // return users;
+            if (rs.next()) {
+                User user = mapResultSetToUser(rs);
+                rs.close();
+                stmt.close();
+                return user;
+            }
 
-    // String sql = "SELECT id, full_Name, email, password FROM users WHERE
-    // LOWER(full_Name) LIKE ?";
-    // try {
-    // getDBconnection();
-    // if (con == null)
-    // return users;
+            rs.close();
+            stmt.close();
 
-    // try (PreparedStatement ps = con.prepareStatement(sql)) {
-    // ps.setString(1, "%" + name.toLowerCase() + "%");
-    // try (ResultSet rs = ps.executeQuery()) {
-    // while (rs.next()) {
-    // User u = new User(rs.getLong("id"), rs.getString("full_Name"),
-    // rs.getString("email"),
-    // rs.getString("password"));
-    // users.add(u);
-    // }
-    // }
-    // }
-    // } catch (Exception ex) {
-    // ex.printStackTrace();
-    // } finally {
-    // closeConnection();
-    // }
-    // return users;
-    // }
+        } catch (SQLException e) {
+            System.err.println("Error finding user by ID: " + e.getMessage());
+        } finally {
+            closeConnection();
+        }
 
-    // public User getUserbyEmail(String email) {
-    // if (email == null || email.isEmpty())
-    // return null;
-    // String sql = "SELECT id, full_Name, email, password FROM users WHERE email =
-    // ?";
-    // try {
-    // getDBconnection();
-    // if (con == null)
-    // return null;
+        return null;
+    }
 
-    // try (PreparedStatement ps = con.prepareStatement(sql)) {
-    // ps.setString(1, email);
-    // try (ResultSet rs = ps.executeQuery()) {
-    // if (rs.next()) {
-    // return new User(
-    // rs.getLong("id"),
-    // rs.getString("full_Name"),
-    // rs.getString("email"),
-    // rs.getString("password"));
-    // } else {
-    // return null;
-    // }
-    // }
-    // }
-    // } catch (Exception ex) {
-    // ex.printStackTrace();
-    // return null;
-    // } finally {
-    // closeConnection();
-    // }
+    public User findByEmail(String email) {
+        String sql = "SELECT * FROM users WHERE email = ?";
 
-    // }
+        try {
+            getDBconnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            stmt.setString(1, email);
 
-    // public static void main(String[] args) {
-    // UserDAO dao = new UserDAO();
-    // dao.getDBconnection();
-    // List<User> list = dao.getListUser();
-    // for (User u : list) {
-    // System.out.println(u);
-    // }
+            ResultSet rs = stmt.executeQuery();
 
-    // User u = new User(0, "Trần Minh Hiếu", "TMHaaa@gmail.com",
-    // BCrypt.hashpw("hieu123", BCrypt.gensalt(12)));
-    // dao.create(u);
-    // list = dao.getListUser();
-    // for (User p : list) {
-    // System.out.println(p);
-    // }
+            if (rs.next()) {
+                User user = mapResultSetToUser(rs);
+                rs.close();
+                stmt.close();
+                return user;
+            }
 
-    // }
+            rs.close();
+            stmt.close();
 
+        } catch (SQLException e) {
+            System.err.println("Error finding user by email: " + e.getMessage());
+        } finally {
+            closeConnection();
+        }
+
+        return null;
+    }
+
+    public List<User> getUsers(int offset, int limit) {
+        String sql = "SELECT * FROM users ORDER BY total_score DESC LIMIT ? OFFSET ?";
+        List<User> users = new ArrayList<>();
+
+        try {
+            getDBconnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            stmt.setInt(1, limit);
+            stmt.setInt(2, offset);
+
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                users.add(mapResultSetToUser(rs));
+            }
+
+            rs.close();
+            stmt.close();
+
+        } catch (SQLException e) {
+            System.err.println("Error getting users: " + e.getMessage());
+        } finally {
+            closeConnection();
+        }
+
+        return users;
+    }
+
+    public boolean emailExists(String email) {
+        String sql = "SELECT COUNT(*) as count FROM users WHERE email = ?";
+
+        try {
+            getDBconnection();
+            PreparedStatement stmt = con.prepareStatement(sql);
+            stmt.setString(1, email);
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                int count = rs.getInt("count");
+                rs.close();
+                stmt.close();
+                return count > 0;
+            }
+
+            rs.close();
+            stmt.close();
+
+        } catch (SQLException e) {
+            System.err.println("Error checking email exists: " + e.getMessage());
+        } finally {
+            closeConnection();
+        }
+
+        return false;
+    }
+
+    // hàm mapping
+    private User mapResultSetToUser(ResultSet rs) throws SQLException {
+        User user = new User();
+
+        user.setId(rs.getLong("id"));
+        user.setFullName(rs.getString("full_name"));
+        user.setEmail(rs.getString("email"));
+        user.setPassword(rs.getString("password"));
+
+        Timestamp createAt = rs.getTimestamp("create_at");
+        if (createAt != null) {
+            user.setCreateAt(createAt.toInstant());
+        }
+
+        Timestamp updateAt = rs.getTimestamp("update_at");
+        if (updateAt != null) {
+            user.setUpdateAt(updateAt.toInstant());
+        }
+
+        user.setTotalScore(rs.getLong("total_score"));
+
+        return user;
+    }
 }
