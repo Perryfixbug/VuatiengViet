@@ -12,6 +12,7 @@ import vuatiengvietpj.DAO.UserDAO;
 import vuatiengvietpj.model.User;
 import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
+import vuatiengvietpj.util.SessionManager;
 
 public class UserController extends ServerController {
     private UserDAO userDAO = new UserDAO();
@@ -34,31 +35,39 @@ public class UserController extends ServerController {
         return switch (request.getMaLenh()) {
             case "LOGIN" -> handleLogin(data);
             case "SIGNUP" -> handleSignUp(data);
-            // case "LOGOUT" -> handleLogOut(data);
+            case "LOGOUT" -> handleLogOut(data);
             case "CGPASS" -> handleChangePassword(data);
             // case "FGPASS" -> handleForgetPassword(data);
             default -> createErrorResponse(module, request.getMaLenh(), "Hành động không hợp lệ");
         };
     }
 
-    // email, password
+    // đăng nhập
     public Response handleLogin(String data) {
         User loginUser = gson.fromJson(data, User.class);
         User userChecker = userDAO.findByEmail(loginUser.getEmail());
         if (userChecker == null) {
             return createErrorResponse(module, "LOGIN", "Tai khoan hoac mat khau khong dung");
         } else if (BCrypt.checkpw(loginUser.getPassword(), userChecker.getPassword())) {
+            if (SessionManager.isLoggedIn(userChecker.getId())) {
+                return createErrorResponse(module, "LOGIN", "Tai khoan dang duoc dang nhap o noi khac");
+            }
+            SessionManager.createOrUpdate(userChecker);
             return createSuccessResponse(module, "LOGIN", gson.toJson(userChecker));
         } else {
             return createErrorResponse(module, "LOGIN", "Tai khoan hoac mat khau khong dung");
         }
     }
 
-    public void handleLogOut(String str) {
-
+    // đăng xuất
+    public Response handleLogOut(String data) {
+        Long userId = Long.parseLong(data);
+        boolean ok = SessionManager.destroy(userId); // hủy session
+        return ok ? createSuccessResponse(module, "LOGOUT", "OK")
+                : createErrorResponse(module, "LOGOUT", "Not logged in");
     }
 
-    // email,password,fullname
+    // đăng ký
     public Response handleSignUp(String data) {
         User sigupUser = gson.fromJson(data, User.class);
         sigupUser.setPassword(BCrypt.hashpw(sigupUser.getPassword(), BCrypt.gensalt(12)));
@@ -72,6 +81,7 @@ public class UserController extends ServerController {
         }
     }
 
+    // đổi mật khẩu
     public Response handleChangePassword(String data) {
         String parts[] = data.trim().split(",");
         User user = userDAO.findByEmail(parts[0]);

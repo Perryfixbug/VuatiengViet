@@ -23,26 +23,14 @@ public class UserController extends ClientController {
                 .create();
     }
 
-    public User login(String email, String password) {
+    public Response login(String email, String password) {
         try {
-            // Hash password trước khi gửi
-
             User userLogin = new User();
             userLogin.setEmail(email);
             userLogin.setPassword(password);
 
             // Gửi request và nhận response
-            Response response = sendAndReceive(module, "LOGIN", gson.toJson(userLogin));
-
-            if (response.isSuccess()) {
-                // ✅ Parse JSON từ response.getData() thành User object
-                User user = gson.fromJson(response.getData(), User.class);
-                System.out.println("Dang nhap thanh cong: " + user);
-                return user;
-            } else {
-                System.out.println("Dang nhap that bai " + response.getData());
-            }
-
+            return sendAndReceive(module, "LOGIN", gson.toJson(userLogin));
         } catch (Exception e) {
             System.err.println("Loi dang nhap: " + e.getMessage());
             e.printStackTrace();
@@ -51,7 +39,7 @@ public class UserController extends ClientController {
         return null;
     }
 
-    public User signup(String email, String fullName, String password) {
+    public Response signup(String email, String fullName, String password) {
         try {
 
             User signupUser = new User();
@@ -59,16 +47,7 @@ public class UserController extends ClientController {
             signupUser.setFullName(fullName);
             signupUser.setPassword(password);
 
-            Response response = sendAndReceive(module, "SIGNUP", gson.toJson(signupUser));
-
-            if (response.isSuccess()) {
-                User user = gson.fromJson(response.getData(), User.class);
-                System.out.println("Dang ki thanh cong: " + user.getFullName());
-                return user;
-
-            } else {
-                System.out.println("Dang ky that bai: " + response.getData());
-            }
+            return sendAndReceive(module, "SIGNUP", gson.toJson(signupUser));
 
         } catch (Exception e) {
             System.err.println("Loi dang ky: " + e.getMessage());
@@ -115,40 +94,32 @@ public class UserController extends ClientController {
     // return null;
     // }
 
-    public boolean changePassword(String email, String oldPassword, String newPassword) {
+    public Response changePassword(String email, String oldPassword, String newPassword) {
         try {
 
             String data = email + "," + oldPassword + "," + newPassword;
-
-            Response response = sendAndReceive(module, "CGPASS", data);
-
-            if (response.isSuccess()) {
-                System.out.println("Doi mat khau thanh cong");
-                return true;
-            } else {
-                System.out.println("Doi mat khau that bai: " + response.getData());
-            }
+            return sendAndReceive(module, "CGPASS", data);
 
         } catch (Exception e) {
             System.err.println("Loi doi mat khau: " + e.getMessage());
         }
 
-        return false;
+        return null;
     }
 
-    public boolean logout() {
+    public boolean logout(Long userId) {
         try {
-            Response response = sendAndReceive(module, "LOGOUT", "");
+            Response response = sendAndReceive(module, "LOGOUT", userId.toString());
 
             if (response.isSuccess()) {
-                System.out.println("✅ Đăng xuất thành công");
+                System.out.println("Dang xuat thanh cong " + userId);
                 return true;
             } else {
-                System.out.println("❌ Đăng xuất thất bại: " + response.getData());
+                System.out.println("Dang xuat that bai: " + response.getData());
             }
 
         } catch (Exception e) {
-            System.err.println("❌ Lỗi đăng xuất: " + e.getMessage());
+            System.err.println("loi dang xuat: " + e.getMessage());
         }
 
         return false;

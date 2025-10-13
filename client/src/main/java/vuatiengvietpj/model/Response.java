@@ -48,4 +48,9 @@ public class Response implements Serializable {
         this.success = success;
     }
 
+    @Override
+    public String toString() {
+        return "Response [modunle=" + modunle + ", maLenh=" + maLenh + ", data=" + data + ", success=" + success + "]";
+    }
+
 }

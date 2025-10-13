@@ -39,4 +39,9 @@ public class Request implements Serializable {
         this.data = data;
     }
 
+    @Override
+    public String toString() {
+        return "Request [modunle=" + modunle + ", maLenh=" + maLenh + ", data=" + data + "]";
+    }
+
 }

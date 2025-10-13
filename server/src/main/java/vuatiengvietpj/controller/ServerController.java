@@ -20,34 +20,21 @@ public abstract class ServerController {
     // khung xử lý chung
     public final void handleClient() {
         try {
-            System.out.println("Client kết nối từ: " + clientSocket.getInetAddress());
-
-            // ✅ Nhận Request từ client
             Request request = receiveRequest();
+            if (request == null)
+                return; // client đóng trước khi gửi gì -> thoát êm
 
-            if (request != null) {
-                System.out.printf("Xử lý request: %s - %s\n",
-                        request.getModunle(), request.getMaLenh());
+            System.out.printf("Xu ly request: %s - %s\n",
+                    request.getModunle(), request.getMaLenh());
 
-                // ✅ Xử lý và tạo Response
-                Response response = process(request);
-
-                // ✅ Gửi Response về client
-                sendResponse(response);
-            }
-
+            Response response = process(request);
+            sendResponse(response); // gửi đúng 1 lần
+            out.flush();
+        } catch (java.io.EOFException | java.net.SocketException closed) {
+            // client đóng kết nối trong/ sau khi nhận response -> coi như bình thường
         } catch (Exception e) {
-            System.err.println("Lỗi xử lý client: " + e.getMessage());
-            e.printStackTrace();
-
-            // ✅ Gửi error response nếu có lỗi
-            try {
-                Response errorResponse = new Response("ERROR", "SYSTEM",
-                        "Lỗi server: " + e.getMessage(), false);
-                sendResponse(errorResponse);
-            } catch (IOException ignored) {
-            }
-
+            System.err.println("Loi xu ly client: " + e.getMessage());
+            // Không cố gửi error response vì socket có thể đã đóng
         } finally {
             closeConnection();
         }
@@ -56,8 +43,15 @@ public abstract class ServerController {
     // abstract: controller con xử lý gói byte
     protected abstract Response process(Request request) throws IOException;
 
-    protected Request receiveRequest() throws IOException, ClassNotFoundException {
-        return (Request) in.readObject();
+    protected Request receiveRequest() {
+        try {
+            return (Request) in.readObject();
+        } catch (java.io.EOFException | java.net.SocketException closed) {
+            return null; // client đóng kết nối
+        } catch (Exception e) {
+            System.err.println("Loi nhan request: " + e.getMessage());
+            return null;
+        }
     }
 
     protected void sendResponse(Response response) throws IOException {
@@ -81,7 +75,7 @@ public abstract class ServerController {
                 in.close();
             if (clientSocket != null)
                 clientSocket.close();
-            System.out.println("Đóng kết nối client.\n");
+            System.out.println("Dong ket noi client.\n");
         } catch (IOException ignored) {
         }
     }
