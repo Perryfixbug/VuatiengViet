@@ -9,8 +9,8 @@ public class Response implements Serializable {
     private boolean success;
     private static final long serialVersionUID = 1L;
 
-    public Response(String modul, String maLenh, String data, boolean success) {
-        this.modunle = modul;
+    public Response(String module, String maLenh, String data, boolean success) {
+        this.modunle = module;
         this.maLenh = maLenh;
         this.data = data;
         this.success = success;
@@ -46,6 +46,11 @@ public class Response implements Serializable {
 
     public void setSuccess(boolean success) {
         this.success = success;
+    }
+
+    @Override
+    public String toString() {
+        return "Response [modunle=" + modunle + ", maLenh=" + maLenh + ", data=" + data + ", success=" + success + "]";
     }
 
 }

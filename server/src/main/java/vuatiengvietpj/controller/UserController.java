@@ -12,6 +12,7 @@ import vuatiengvietpj.dao.UserDAO;
 import vuatiengvietpj.model.User;
 import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
+import vuatiengvietpj.util.SessionManager;
 
 public class UserController extends ServerController {
     private UserDAO userDAO = new UserDAO();
@@ -31,34 +32,50 @@ public class UserController extends ServerController {
     @Override
     protected Response process(Request request) throws java.io.IOException {
         String data = request.getData();
+        String ip = request.getIp();
         return switch (request.getMaLenh()) {
-            case "LOGIN" -> handleLogin(data);
+            case "LOGIN" -> handleLogin(data, ip);
             case "SIGNUP" -> handleSignUp(data);
-            // case "LOGOUT" -> handleLogOut(data);
+            case "LOGOUT" -> handleLogOut(data);
             case "CGPASS" -> handleChangePassword(data);
+            case "ALIVE" -> handleCheckAlive(data);
             // case "FGPASS" -> handleForgetPassword(data);
             default -> createErrorResponse(module, request.getMaLenh(), "Hành động không hợp lệ");
         };
     }
 
-    // email, password
-    public Response handleLogin(String data) {
+    // check client còn sống k
+    public Response handleCheckAlive(String data) {
+        return createSuccessResponse(module, "ALIVE", "Server know that you’re alive: " + data);
+    }
+
+    // đăng nhập
+    public Response handleLogin(String data, String ip) {
         User loginUser = gson.fromJson(data, User.class);
         User userChecker = userDAO.findByEmail(loginUser.getEmail());
         if (userChecker == null) {
             return createErrorResponse(module, "LOGIN", "Tai khoan hoac mat khau khong dung");
         } else if (BCrypt.checkpw(loginUser.getPassword(), userChecker.getPassword())) {
+            if (SessionManager.isLoggedIn(userChecker.getId())) {
+                SessionManager.destroy(userChecker.getId());
+                // Hủy session cũ
+            }
+            SessionManager.createOrUpdate(userChecker, ip); // cập nhật session với IP của thiết bị mới
             return createSuccessResponse(module, "LOGIN", gson.toJson(userChecker));
         } else {
             return createErrorResponse(module, "LOGIN", "Tai khoan hoac mat khau khong dung");
         }
     }
 
-    public void handleLogOut(String str) {
-
+    // đăng xuất
+    public Response handleLogOut(String data) {
+        Long userId = Long.parseLong(data);
+        boolean ok = SessionManager.destroy(userId); // hủy session
+        return ok ? createSuccessResponse(module, "LOGOUT", "OK")
+                : createErrorResponse(module, "LOGOUT", "Not logged in");
     }
 
-    // email,password,fullname
+    // đăng ký
     public Response handleSignUp(String data) {
         User sigupUser = gson.fromJson(data, User.class);
         sigupUser.setPassword(BCrypt.hashpw(sigupUser.getPassword(), BCrypt.gensalt(12)));
@@ -72,6 +89,7 @@ public class UserController extends ServerController {
         }
     }
 
+    // đổi mật khẩu
     public Response handleChangePassword(String data) {
         String parts[] = data.trim().split(",");
         User user = userDAO.findByEmail(parts[0]);

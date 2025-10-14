@@ -13,69 +13,51 @@ public abstract class ServerController {
 
     public ServerController(Socket clientSocket) throws IOException {
         this.clientSocket = clientSocket;
-        this.out = new ObjectOutputStream(clientSocket.getOutputStream()); // Out first
-        this.in = new ObjectInputStream(clientSocket.getInputStream()); // In second
+        this.out = new ObjectOutputStream(clientSocket.getOutputStream()); // Out trước
+        this.in = new ObjectInputStream(clientSocket.getInputStream()); // In sau
     }
 
-    // Common handling framework
-    public final void handleClient() {
+    // khung xử lý chung
+    public final void handleClient(String ip) // chỗ này em chỉnh truyền Ip của client vào để xác minh thiết bị
+    {
         try {
-            System.out.println("Client connected from: " + clientSocket.getInetAddress());
-
-            // ✅ Receive Request from client
             Request request = receiveRequest();
+            if (request == null)
+                return; // client đóng trước khi gửi gì -> thoát êm
 
-            if (request != null) {
-                System.out.printf("Processing request: %s - %s\n",
-                        request.getModunle(), request.getMaLenh());
-
-                // ✅ Process and create Response
-                Response response = process(request);
-
-                // ✅ Send Response to client
-                sendResponse(response);
-            }
-
-        } catch (java.net.SocketException e) {
-            System.err.println("[ERROR] Connection reset by client: " + e.getMessage());
+            System.out.printf("Xu ly request: %s - %s\n",
+                    request.getModunle(), request.getMaLenh());
+            request.setIp(ip);
+            Response response = process(request);
+            sendResponse(response); // gửi đúng 1 lần
+            out.flush();
+        } catch (java.io.EOFException | java.net.SocketException closed) {
+            // client đóng kết nối trong/ sau khi nhận response -> coi như bình thường
         } catch (Exception e) {
-            System.err.println("Error handling client: " + e.getMessage());
-            e.printStackTrace(); // Added debug to print detailed stack trace
-
-            // ✅ Send error response if there is an issue
-            try {
-                Response errorResponse = new Response("ERROR", "SYSTEM",
-                        "Server error: " + e.getMessage(), false);
-                sendResponse(errorResponse);
-            } catch (IOException ignored) {
-                System.err.println("Unable to send error response: " + ignored.getMessage());
-            }
-
+            System.err.println("Loi xu ly client: " + e.getMessage());
+            // Không cố gửi error response vì socket có thể đã đóng
         } finally {
             closeConnection();
         }
     }
 
-    // abstract: child controllers handle byte packets
+    // abstract: controller con xử lý gói byte
     protected abstract Response process(Request request) throws IOException;
 
-    protected Request receiveRequest() throws IOException, ClassNotFoundException {
+    protected Request receiveRequest() {
         try {
             return (Request) in.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            System.err.println("Error receiving request: " + e.getMessage());
-            throw e;
+        } catch (java.io.EOFException | java.net.SocketException closed) {
+            return null; // client đóng kết nối
+        } catch (Exception e) {
+            System.err.println("Loi nhan request: " + e.getMessage());
+            return null;
         }
     }
 
     protected void sendResponse(Response response) throws IOException {
-        try {
-            out.writeObject(response);
-            out.flush();
-        } catch (IOException e) {
-            System.err.println("Error sending response: " + e.getMessage());
-            throw e;
-        }
+        out.writeObject(response);
+        out.flush();
     }
 
     protected Response createSuccessResponse(String module, String command, String data) {
@@ -94,9 +76,8 @@ public abstract class ServerController {
                 in.close();
             if (clientSocket != null)
                 clientSocket.close();
-            System.out.println("Closed client connection.\n");
-        } catch (IOException e) {
-            System.err.println("Error closing connection: " + e.getMessage());
+            System.out.println("Dong ket noi client.\n");
+        } catch (IOException ignored) {
         }
     }
 }

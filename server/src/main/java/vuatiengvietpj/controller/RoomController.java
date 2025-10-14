@@ -11,6 +11,7 @@ import vuatiengvietpj.model.Room;
 import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
 import vuatiengvietpj.model.Player;
+import vuatiengvietpj.model.User;
 
 public class RoomController extends ServerController {
     private RoomDAO roomDAO;
@@ -36,11 +37,14 @@ public class RoomController extends ServerController {
             case "EDIT" -> handleEdit(data);
             case "OUT" -> handleOut(data);
             case "GETALL" -> handleGetAll();
+            case "REFRESH" -> handleRefresh(data);
+            case "KICK" -> handleKick(data);
             default -> createErrorResponse(module, request.getMaLenh(), "Hanh dong khong hop le");
         };
     }
     // Tạo phòng mới
     private Response handleCreate(String data) {
+        // data format: "ownerId"
         if (data == null || data.isEmpty()) {
             return createErrorResponse(module, "CREATE", "Du lieu khong hop le");
         }
@@ -58,18 +62,20 @@ public class RoomController extends ServerController {
     }
     // Tham gia phòng
     private Response handleJoin(String data) {
+        // data format: "roomId,userId"
         String[] parts = data.split(",");
         if (parts.length < 2) {
             return createErrorResponse(module, "JOIN", "Du lieu khong hop le");
         }
+        
         try {
             Long roomId = Long.parseLong(parts[0]);
             Long userId = Long.parseLong(parts[1]);
-            boolean success = joinRoom(roomId, userId);
-            if (success) {
-                return createSuccessResponse(module, "JOIN", "Ban da tham gia phong");
+            Room room = joinRoom(roomId, userId);
+            if (room != null) {
+                return createSuccessResponse(module, "JOIN", gson.toJson(room));
             } else {
-                return createErrorResponse(module, "JOIN", "Tham gia phong that bai");
+                return createErrorResponse(module, "JOIN", "Tham gia phong that bai hoac phong da day");
             }
         } catch (NumberFormatException e) {
             return createErrorResponse(module, "JOIN", "Du lieu khong hop le: " + e.getMessage());
@@ -77,21 +83,19 @@ public class RoomController extends ServerController {
     }
     // Chỉnh sửa phòng
     private Response handleEdit(String data) {
+        // data format: "roomId,maxPlayer"
         String[] parts = data.split(",");
-        if (parts.length < 5) {
+        if (parts.length < 2) {
             return createErrorResponse(module, "EDIT", "Du lieu khong hop le");
         }
         try {
             Long roomId = Long.parseLong(parts[0]);
-            Long ownerId = parts[1].isEmpty() ? null : Long.parseLong(parts[1]);
-            String status = parts[2].isEmpty() ? null : parts[2];
-            Integer maxPlayer = parts[3].isEmpty() ? null : Integer.parseInt(parts[3]);
-            Long challengePackId = parts[4].isEmpty() ? null : Long.parseLong(parts[4]);
-            Room room = editRoom(roomId, ownerId, status, maxPlayer, challengePackId);
+            int maxPlayer = parts[1].isEmpty() ? 0 : Integer.parseInt(parts[1]);
+            Room room = editRoom(roomId, maxPlayer);
             if (room != null) {
                 return createSuccessResponse(module, "EDIT", gson.toJson(room));
             } else {
-                return createErrorResponse(module, "EDIT", "LLoi chinh sua phong");
+                return createErrorResponse(module, "EDIT", "Loi chinh sua phong");
             }
         } catch (NumberFormatException e) {
             return createErrorResponse(module, "EDIT", "Du lieu khong hop le: " + e.getMessage());
@@ -99,6 +103,7 @@ public class RoomController extends ServerController {
     }
     // Rời phòng
     private Response handleOut(String data) {
+        // data format: "roomId,userId"
         String[] parts = data.split(",");
         if (parts.length < 2) {
             return createErrorResponse(module, "OUT", "Du lieu khong hop le");
@@ -106,8 +111,8 @@ public class RoomController extends ServerController {
         try {
             Long roomId = Long.parseLong(parts[0]);
             Long userId = Long.parseLong(parts[1]);
-            outRoom(roomId, userId);
-            return createSuccessResponse(module, "OUT", "Ban da roi khoi phong");
+            Room room = outRoom(roomId, userId);
+            return createSuccessResponse(module, "OUT", gson.toJson(room));
         } catch (NumberFormatException e) {
             return createErrorResponse(module, "OUT", "Du lieu khong hop le: " + e.getMessage());
         }
@@ -123,6 +128,44 @@ public class RoomController extends ServerController {
         }
     }
 
+    private Response handleRefresh(String data) {
+        // data format: "roomId,isPlaying"
+        String[] parts = data.split(",");
+        if (parts.length < 2) {
+            return createErrorResponse(module, "REFRESH", "Du lieu khong hop le");
+        }
+        try {
+            Long roomId = Long.parseLong(parts[0]);
+            boolean isPlaying = Boolean.parseBoolean(parts[1]);
+
+            Room room = roomDAO.getRoomById(roomId);
+            if (room == null) {
+                return createErrorResponse(module, "REFRESH", "Phong khong ton tai");
+            }
+            room = changeStatus(roomId, isPlaying);
+            return createSuccessResponse(module, "REFRESH", gson.toJson(room));
+        } catch (NumberFormatException e) {
+            return createErrorResponse(module, "REFRESH", "Du lieu khong hop le: " + e.getMessage());
+        }
+    }
+    // Đuổi người chơi khác chủ phòng ra khỏi phòng
+    public Response handleKick(String data) {
+        // data format: "roomId,userId,kickedPlayerId"
+        String[] parts = data.split(",");
+        if (parts.length < 3) {
+            return createErrorResponse(module, "KICK", "Du lieu khong hop le");
+        }
+        Long roomId = Long.parseLong(parts[0]);
+        Long userId = Long.parseLong(parts[1]);
+        Long kickedPlayerId = Long.parseLong(parts[2]);
+        Room room = kickPlayer(roomId, userId, kickedPlayerId);
+        if (room != null) {
+            return createSuccessResponse(module, "KICK", gson.toJson(room));
+        } else {
+            return createErrorResponse(module, "KICK", "Du lieu khong hop le hoac khong the kick");
+        }
+    }
+
     // Các phương thức hỗ trợ
     private Long generateRoomId() {
         return System.currentTimeMillis() + new Random().nextInt(1000);
@@ -134,6 +177,16 @@ public class RoomController extends ServerController {
 
     public Room getRoomById(Long roomId) {
         return roomDAO.getRoomById(roomId);
+    }
+    // Thay đổi trạng thái phòng
+    public Room changeStatus(Long roomId, boolean isPlaying){
+        // Đổi trạng thái hiện tại của phòng qua biến isPlaying
+        Room room = roomDAO.getRoomById(roomId);
+        if (room == null) return null;
+        String status = isPlaying ? "pending" : "playing";
+        roomDAO.updateRoom(roomId, null, status, null);
+        room.setStatus(status);
+        return room;
     }
 
     public Room createRoom(Long ownerId) {
@@ -148,15 +201,18 @@ public class RoomController extends ServerController {
         return room;
     }
 
-    public boolean joinRoom(Long roomId, Long userId) {
+    public Room joinRoom(Long roomId, Long userId) {
         Room room = roomDAO.getRoomById(roomId);
-        if (room == null || userId == null || room.getMaxPlayer() == 0 || room.getPlayers().size() >= room.getMaxPlayer()) {
-            return false;
+        if (room == null || userId == null || room.getMaxPlayer() == 0 ) {
+            return null;
+        }
+        if (room.getPlayers().size() >= room.getMaxPlayer()) {
+            return null;
         }
         List<Player> players = room.getPlayers();
         for (Player p : players) {
             if (p.getUserId().equals(userId)) {
-                return false;
+                return null;
             }
         }
         Player newPlayer = new Player();
@@ -164,27 +220,25 @@ public class RoomController extends ServerController {
         players.add(newPlayer);
         room.setPlayers(players);
         roomDAO.addPlayerToRoom(roomId, userId);
-        return true;
+        return room;
     }
 
-    public Room editRoom(Long roomId, Long ownerId, String status, Integer maxPlayer, Long challengePackId) {
+    public Room editRoom(Long roomId, Integer maxPlayer) {
         Room room = roomDAO.getRoomById(roomId);
         if (room == null) return null;
-        if (ownerId != null) room.setOwnerId(ownerId);
-        if (status != null) room.setStatus(status);
         if (maxPlayer != null && maxPlayer > 8) {
             maxPlayer = 8;
         }
         room.setMaxPlayer(maxPlayer);
-        roomDAO.updateRoom(roomId, room.getOwnerId(), room.getStatus(), room.getMaxPlayer());
+        roomDAO.updateRoom(roomId, null, null, room.getMaxPlayer());
         return room;
     }
 
-    public void outRoom(Long roomId, Long userId) {
+    public Room outRoom(Long roomId, Long userId) {
         Room room = roomDAO.getRoomById(roomId);
-        if (room == null || userId == null) return;
+        if (room == null || userId == null) return null;
         List<Player> players = room.getPlayers();
-        if (players == null) return;
+        if (players == null) return null;
         Player toRemove = null;
         for (Player p : players) {
             if (p.getUserId().equals(userId)) {
@@ -203,5 +257,27 @@ public class RoomController extends ServerController {
                 roomDAO.updateRoom(roomId, room.getOwnerId(), null, null);
             }
         }
+        return room;
+    }
+    public Room kickPlayer(Long roomId, Long userId, Long kickedPlayerId) {
+        if (roomId == null || userId == null || kickedPlayerId == null) return null;
+        Room room = roomDAO.getRoomById(roomId);
+        if (room == null) return null;
+        if (room.getOwnerId().equals(userId) == false || userId == kickedPlayerId || room.getPlayers().size() <= 1) return null;
+        List<Player> players = room.getPlayers();
+        if (players == null) return null;
+        Player toRemove = null;
+        for (Player p : players) {
+            if (p.getUserId().equals(kickedPlayerId)) {
+                toRemove = p;
+                break;
+            }
+        }
+        if (toRemove != null) {
+            players.remove(toRemove);
+            room.setPlayers(players);
+            roomDAO.deletePlayerFromRoom(roomId, kickedPlayerId);
+        }
+        return room;
     }
 }

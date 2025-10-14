@@ -6,6 +6,7 @@ public class Request implements Serializable {
     private String modunle;
     private String maLenh;
     private String data;
+    private String ip;
     private static final long serialVersionUID = 1L;
 
     public Request(String module, String maLenh, String data) {
@@ -13,6 +14,14 @@ public class Request implements Serializable {
         this.maLenh = maLenh;
         this.data = data;
 
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
     }
 
     public String getModunle() {
@@ -39,4 +48,8 @@ public class Request implements Serializable {
         this.data = data;
     }
 
+    @Override
+    public String toString() {
+        return "Request [modunle=" + modunle + ", maLenh=" + maLenh + ", data=" + data + "]";
+    }
 }
