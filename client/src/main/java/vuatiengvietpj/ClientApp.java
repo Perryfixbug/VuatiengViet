@@ -7,11 +7,11 @@ import java.io.IOException;
 public class ClientApp {
 
     public static void main(String[] args) throws IOException {
-        String stt = "3";
+        String stt = "5";
         // SIGNUP
         UserController uc = new UserController("localhost", 2208);
-        // uc.signup("testNEW_" + stt + "@gmail.com", "PHAN VAN HOAN", "hoan");
-        // uc.disconnect();
+        uc.signup("testNEW_" + stt + "@gmail.com", "PHAN VAN HOAN", "hoan");
+        uc.disconnect();
 
         // // LOGIN
         // uc = new UserController("localhost", 2208);
@@ -24,22 +24,16 @@ public class ClientApp {
         // uc.disconnect();
 
         uc = new UserController("localhost", 2208);
-        System.out.println(uc.login("testNEW_" + stt + "@gmail.com", "da doi mk1"));
+        System.out.println(uc.login("testNEW_" + stt + "@gmail.com", "hoan"));
         uc.disconnect();
 
         uc = new UserController("localhost", 2208);
-        System.out.println(uc.login("testNEW_" + stt + "@gmail.com", "da doi mk1"));
-
+        System.out.println(uc.login("testNEW_" + stt + "@gmail.com", "hoan"));
         uc.disconnect();
 
         uc = new UserController("localhost", 2208);
-        System.out.println(uc.logout(11L));
+        System.out.println(uc.alive("13", "hoan@gmail.com"));
         uc.disconnect();
-
-        uc = new UserController("localhost", 2208);
-        System.out.println(uc.changePassword("testNEW_" + stt + "@gmail.com", "da doi mk1", "hoan"));
-        uc.disconnect();
-
     }
 }
 // ...existing code...

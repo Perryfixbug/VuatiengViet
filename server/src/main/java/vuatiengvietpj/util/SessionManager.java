@@ -20,19 +20,15 @@ public class SessionManager {
         return KEY_PREFIX + userId;
     }
 
-    public static boolean createOrUpdate(User user) {
+    public static boolean createOrUpdate(User user, String ip) {
         if (user == null || user.getId() == null)
             return false;
 
-        // Ẩn password trước khi lưu session
-        String pwd = user.getPassword();
-        user.setPassword(null);
         String userJson = GSON.toJson(user);
-        user.setPassword(pwd); // khôi phục vào object đang dùng
-
         Map<String, String> data = new HashMap<>();
         data.put("user", userJson);
         data.put("loginAtMs", String.valueOf(System.currentTimeMillis()));
+        data.put("ip", ip);
         try (Jedis jedis = RedisManager.getResource()) {
             if (jedis == null)
                 return false;
@@ -45,6 +41,7 @@ public class SessionManager {
             evt.put("userId", user.getId());
             evt.put("email", user.getEmail());
             evt.put("loginAtMs", System.currentTimeMillis());
+            evt.put("ip", ip);
             jedis.publish(CH_EVENTS, GSON.toJson(evt));
             return true;
         }
@@ -69,6 +66,18 @@ public class SessionManager {
         }
     }
 
+    public static boolean checkNewIpAddressforSession(long userId, String newIp) {
+        Jedis jedis = RedisManager.getResource();
+        if (jedis == null)
+            return false;
+        String oldIp = jedis.hget(key(userId), newIp);
+        if (!oldIp.equals(newIp)) {
+            return true;
+        }
+        return false;
+
+    }
+
     public static boolean isLoggedIn(long userId) {
         try (Jedis jedis = RedisManager.getResource()) {
             return jedis != null && jedis.exists(key(userId));
@@ -82,6 +91,7 @@ public class SessionManager {
 
             String k = key(userId);
             String json = jedis.hget(k, "user");
+            String ip = jedis.hget(k, "ip");
             String email = null;
             if (json != null && !json.isEmpty()) {
                 User u = GSON.fromJson(json, User.class);
@@ -95,6 +105,7 @@ public class SessionManager {
             evt.put("type", "LOGOUT");
             evt.put("userId", userId);
             evt.put("email", email);
+            evt.put("ip", ip);
             evt.put("logoutAtMs", System.currentTimeMillis());
             jedis.publish(CH_EVENTS, GSON.toJson(evt));
 

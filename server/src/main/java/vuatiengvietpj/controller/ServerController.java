@@ -18,7 +18,8 @@ public abstract class ServerController {
     }
 
     // khung xử lý chung
-    public final void handleClient() {
+    public final void handleClient(String ip) // chỗ này em chỉnh truyền Ip của client vào để xác minh thiết bị
+    {
         try {
             Request request = receiveRequest();
             if (request == null)
@@ -26,7 +27,7 @@ public abstract class ServerController {
 
             System.out.printf("Xu ly request: %s - %s\n",
                     request.getModunle(), request.getMaLenh());
-
+            request.setIp(ip);
             Response response = process(request);
             sendResponse(response); // gửi đúng 1 lần
             out.flush();

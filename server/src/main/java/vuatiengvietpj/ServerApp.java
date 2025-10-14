@@ -39,7 +39,7 @@ public class ServerApp {
                     try {
                         System.out.println("IP client: " + client.getInetAddress());
                         UserController controller = new UserController(client);
-                        controller.handleClient();
+                        controller.handleClient(client.getInetAddress().toString());
                     } catch (Exception e) {
                         System.err.println("Lỗi tạo controller: " + e.getMessage());
                         try {

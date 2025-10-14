@@ -39,6 +39,16 @@ public class UserController extends ClientController {
         return null;
     }
 
+    public Response alive(String userId, String email) {
+        try {
+            return sendAndReceive("USER", "ALIVE", userId + "," + email);
+        } catch (Exception e) {
+            System.err.println(e);
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public Response signup(String email, String fullName, String password) {
         try {
 

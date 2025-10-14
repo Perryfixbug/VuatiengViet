@@ -6,6 +6,7 @@ public class Request implements Serializable {
     private String modunle;
     private String maLenh;
     private String data;
+    private String ip;
     private static final long serialVersionUID = 1L;
 
     public Request(String module, String maLenh, String data) {

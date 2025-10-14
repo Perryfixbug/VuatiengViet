@@ -32,27 +32,35 @@ public class UserController extends ServerController {
     @Override
     protected Response process(Request request) throws java.io.IOException {
         String data = request.getData();
+        String ip = request.getIp();
         return switch (request.getMaLenh()) {
-            case "LOGIN" -> handleLogin(data);
+            case "LOGIN" -> handleLogin(data, ip);
             case "SIGNUP" -> handleSignUp(data);
             case "LOGOUT" -> handleLogOut(data);
             case "CGPASS" -> handleChangePassword(data);
+            case "ALIVE" -> handleCheckAlive(data);
             // case "FGPASS" -> handleForgetPassword(data);
             default -> createErrorResponse(module, request.getMaLenh(), "Hành động không hợp lệ");
         };
     }
 
+    // check client còn sống k
+    public Response handleCheckAlive(String data) {
+        return createSuccessResponse(module, "ALIVE", "Server know that you’re alive: " + data);
+    }
+
     // đăng nhập
-    public Response handleLogin(String data) {
+    public Response handleLogin(String data, String ip) {
         User loginUser = gson.fromJson(data, User.class);
         User userChecker = userDAO.findByEmail(loginUser.getEmail());
         if (userChecker == null) {
             return createErrorResponse(module, "LOGIN", "Tai khoan hoac mat khau khong dung");
         } else if (BCrypt.checkpw(loginUser.getPassword(), userChecker.getPassword())) {
             if (SessionManager.isLoggedIn(userChecker.getId())) {
-                return createErrorResponse(module, "LOGIN", "Tai khoan dang duoc dang nhap o noi khac");
+                SessionManager.destroy(userChecker.getId());
+                // Hủy session cũ
             }
-            SessionManager.createOrUpdate(userChecker);
+            SessionManager.createOrUpdate(userChecker, ip); // cập nhật session với IP của thiết bị mới
             return createSuccessResponse(module, "LOGIN", gson.toJson(userChecker));
         } else {
             return createErrorResponse(module, "LOGIN", "Tai khoan hoac mat khau khong dung");
