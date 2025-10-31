@@ -11,7 +11,6 @@ import vuatiengvietpj.model.Room;
 import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
 import vuatiengvietpj.model.Player;
-import vuatiengvietpj.model.User;
 
 public class RoomController extends ServerController {
     private RoomDAO roomDAO;
@@ -37,6 +36,7 @@ public class RoomController extends ServerController {
             case "EDIT" -> handleEdit(data);
             case "OUT" -> handleOut(data);
             case "GETALL" -> handleGetAll();
+            case "GETBYID" -> handleGetById(data);
             case "REFRESH" -> handleRefresh(data);
             case "KICK" -> handleKick(data);
             default -> createErrorResponse(module, request.getMaLenh(), "Hanh dong khong hop le");
@@ -128,6 +128,22 @@ public class RoomController extends ServerController {
         }
     }
 
+    // Tìm phòng theo id, trả về danh sách (có thể rỗng nếu không tìm thấy)
+    private Response handleGetById(String data) {
+        if (data == null || data.isEmpty()) {
+            return createErrorResponse(module, "GETBYID", "Du lieu khong hop le");
+        }
+        try {
+            Long roomId = Long.parseLong(data);
+            Room room = roomDAO.getRoomById(roomId);
+            List<Room> result = new ArrayList<>();
+            if (room != null) result.add(room);
+            return createSuccessResponse(module, "GETBYID", gson.toJson(result));
+        } catch (NumberFormatException e) {
+            return createErrorResponse(module, "GETBYID", "Du lieu khong hop le: " + e.getMessage());
+        }
+    }
+    // Gọi khi bắt đầu chơi hoặc kết thúc ván chơi
     private Response handleRefresh(String data) {
         // data format: "roomId,isPlaying"
         String[] parts = data.split(",");
