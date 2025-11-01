@@ -8,8 +8,9 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
 import org.mindrot.jbcrypt.BCrypt;
-import vuatiengvietpj.DAO.UserDAO;
+
 import vuatiengvietpj.model.User;
+import vuatiengvietpj.dao.UserDAO;
 import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
 import vuatiengvietpj.util.SessionManager;

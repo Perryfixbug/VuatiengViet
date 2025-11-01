@@ -10,9 +10,27 @@ import java.time.Instant;
 import vuatiengvietpj.model.Response;
 import vuatiengvietpj.model.User;
 
+import javafx.application.Platform;
+import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TextField;
+import vuatiengvietpj.controller.UserController;
+
 public class UserController extends ClientController {
     private String module = "USER";
     private Gson gson;
+
+    @FXML
+    private TextField loginEmail, signupEmail, signupName, changePasswordEmail;
+    @FXML
+    private PasswordField loginPassword, signupPassword, oldPassword, newPassword;
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private TabPane tabPane;
 
     public UserController(String host, int port) throws IOException {
         super(host, port);
@@ -135,10 +153,108 @@ public class UserController extends ClientController {
         return false;
     }
 
-    /**
-     * ✅ Đóng kết nối
-     */
     public void disconnect() {
         close();
     }
+
+    @FXML
+    void onLogin(ActionEvent event) {
+        String email = loginEmail.getText().trim();
+        String pw = loginPassword.getText();
+        if (email.isEmpty() || pw.isEmpty()) {
+            statusLabel.setText("Vui lòng nhập đầy đủ thông tin");
+            return;
+        }
+        setUiEnabled(false);
+        statusLabel.setText("Đang đăng nhập...");
+
+        new Thread(() -> {
+            try {
+                Response resp = login(email, pw);
+                Platform.runLater(() -> {
+                    setUiEnabled(true);
+                    if (resp != null && resp.isSuccess()) {
+                        SceneManager.loadMainScene();
+                    } else {
+                        statusLabel.setText(resp == null ? "Lỗi kết nối" : resp.getData());
+                    }
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    setUiEnabled(true);
+                    statusLabel.setText("Lỗi: " + ex.getMessage());
+                });
+            }
+        }).start();
+    }
+
+    @FXML
+    void onSignup(ActionEvent event) {
+        String email = signupEmail.getText().trim();
+        String name = signupName.getText().trim();
+        String pw = signupPassword.getText();
+        if (email.isEmpty() || name.isEmpty() || pw.isEmpty()) {
+            statusLabel.setText("Vui lòng nhập đầy đủ thông tin");
+            return;
+        }
+        setUiEnabled(false);
+        statusLabel.setText("Đang đăng ký...");
+
+        new Thread(() -> {
+            try {
+                Response resp = signup(email, name, pw);
+                Platform.runLater(() -> {
+                    setUiEnabled(true);
+                    if (resp != null && resp.isSuccess()) {
+                        statusLabel.setText("Đăng ký thành công! Vui lòng đăng nhập.");
+                        tabPane.getSelectionModel().select(0);
+                    } else {
+                        statusLabel.setText(resp == null ? "Lỗi kết nối" : resp.getData());
+                    }
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    setUiEnabled(true);
+                    statusLabel.setText("Lỗi: " + ex.getMessage());
+                });
+            }
+        }).start();
+    }
+
+    @FXML
+    void onChangePassword(ActionEvent event) {
+        String email = changePasswordEmail.getText().trim();
+        String oldPw = oldPassword.getText();
+        String newPw = newPassword.getText();
+        if (email.isEmpty() || oldPw.isEmpty() || newPw.isEmpty()) {
+            statusLabel.setText("Vui lòng nhập đầy đủ");
+            return;
+        }
+        setUiEnabled(false);
+        statusLabel.setText("Đang đổi mật khẩu...");
+
+        new Thread(() -> {
+            try {
+                Response resp = changePassword(email, oldPw, newPw);
+                Platform.runLater(() -> {
+                    setUiEnabled(true);
+                    if (resp != null && resp.isSuccess()) {
+                        statusLabel.setText("Đổi mật khẩu thành công!");
+                    } else {
+                        statusLabel.setText(resp == null ? "Lỗi kết nối" : resp.getData());
+                    }
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    setUiEnabled(true);
+                    statusLabel.setText("Lỗi: " + ex.getMessage());
+                });
+            }
+        }).start();
+    }
+
+    private void setUiEnabled(boolean enabled) {
+        tabPane.setDisable(!enabled);
+    }
+
 }

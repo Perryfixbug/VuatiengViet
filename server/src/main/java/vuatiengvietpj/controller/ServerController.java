@@ -18,24 +18,30 @@ public abstract class ServerController {
     }
 
     // khung xử lý chung
-    public final void handleClient(String ip) // chỗ này em chỉnh truyền Ip của client vào để xác minh thiết bị
-    {
+    public final void handleClient(String ip) {
         try {
-            Request request = receiveRequest();
-            if (request == null)
-                return; // client đóng trước khi gửi gì -> thoát êm
+            while (true) { // loop để xử lý nhiều request
+                Request request = receiveRequest();
+                if (request == null) {
+                    break; // client đóng kết nối
+                }
 
-            System.out.printf("Xu ly request: %s - %s\n",
-                    request.getModunle(), request.getMaLenh());
-            request.setIp(ip);
-            Response response = process(request);
-            sendResponse(response); // gửi đúng 1 lần
-            out.flush();
+                System.out.printf("Xu ly request: %s - %s\n",
+                        request.getModunle(), request.getMaLenh());
+                request.setIp(ip);
+                Response response = process(request);
+                sendResponse(response);
+                out.flush();
+
+                // Nếu là lệnh LOGOUT, thoát loop
+                if ("LOGOUT".equals(request.getMaLenh())) {
+                    break;
+                }
+            }
         } catch (java.io.EOFException | java.net.SocketException closed) {
-            // client đóng kết nối trong/ sau khi nhận response -> coi như bình thường
+            // client đóng kết nối
         } catch (Exception e) {
             System.err.println("Loi xu ly client: " + e.getMessage());
-            // Không cố gửi error response vì socket có thể đã đóng
         } finally {
             closeConnection();
         }

@@ -1,39 +1,33 @@
 package vuatiengvietpj;
 
+import vuatiengvietpj.controller.SceneManager;
 import vuatiengvietpj.controller.UserController;
+
 import java.io.IOException;
+import javafx.application.Application;
+import javafx.stage.Stage;
 
-// ...existing code...
-public class ClientApp {
+public class ClientApp extends Application {
+    private UserController userController;
 
-    public static void main(String[] args) throws IOException {
-        String stt = "5";
-        // SIGNUP
-        UserController uc = new UserController("localhost", 2208);
-        uc.signup("testNEW_" + stt + "@gmail.com", "PHAN VAN HOAN", "hoan");
-        uc.disconnect();
-
-        // // LOGIN
-        // uc = new UserController("localhost", 2208);
-        // uc.login("testNEW_" + stt + "@gmail.com", "hoan");
-        // uc.disconnect();
-
-        // // CHANGE PASSWORD
-        // uc = new UserController("localhost", 2208);
-        // uc.changePassword("testNEW_" + stt + "@gmail.com", "hoan", "da doi mk1");
-        // uc.disconnect();
-
-        uc = new UserController("localhost", 2208);
-        System.out.println(uc.login("testNEW_" + stt + "@gmail.com", "hoan"));
-        uc.disconnect();
-
-        uc = new UserController("localhost", 2208);
-        System.out.println(uc.login("testNEW_" + stt + "@gmail.com", "hoan"));
-        uc.disconnect();
-
-        uc = new UserController("localhost", 2208);
-        System.out.println(uc.alive("13", "hoan@gmail.com"));
-        uc.disconnect();
+    @Override
+    public void start(Stage primaryStage) throws Exception {
+        String host = "localhost";
+        int port = 2208;
+        try {
+            userController = new UserController(host, port);
+        } catch (IOException e) {
+            System.err.println("Không thể kết nối server: " + e.getMessage());
+            return;
+        }
+        SceneManager.setPrimaryStage(primaryStage);
+        SceneManager.setUserController(userController);
+        SceneManager.loadAuthScene();
     }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+
 }
 // ...existing code...

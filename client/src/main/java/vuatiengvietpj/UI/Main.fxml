@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="vuatiengvietpj.controller.MainController" prefWidth="600" prefHeight="400">
+
+    <top>
+        <HBox spacing="10">
+            <Label text="🏆 Vua Tiếng Việt"/>
+            <Button text="Đăng xuất" fx:id="logoutBtn" onAction="#handleLogout"/>
+        </HBox>
+    </top>
+
+    <center>
+        <VBox spacing="10" alignment="CENTER">
+            <Label text="Xin chào, người chơi!"/>
+            <Button text="Bắt đầu trò chơi" fx:id="startBtn" onAction="#handleStart"/>
+        </VBox>
+    </center>
+
+</BorderPane>
