@@ -5,28 +5,38 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.gson.annotations.Expose;
+
 public class Room implements Serializable {
+    @Expose
     private Long id;
+    @Expose
     private Long ownerId;
+    @Expose
+    private String ownerName; // Tên chủ phòng
+    @Expose
     private int maxPlayer;
+    @Expose
     private List<Player> players = new ArrayList<>();
+    @Expose
     private Instant createAt;
+    @Expose
     private ChallengePack cp;
+    @Expose
     private String status;
 
     public Room() {
 
     }
 
-    public Room(Long id, Long ownerId, int maxPlayer, List<Player> players, Instant createAt, ChallengePack cp,
-            String status) {
+    public Room(Long id, Long ownerId, int maxPlayer, Instant createAt, String status, ChallengePack cp, List<Player> players) {
         this.id = id;
         this.ownerId = ownerId;
         this.maxPlayer = maxPlayer;
-        this.players = players;
         this.createAt = createAt;
-        this.cp = cp;
         this.status = status;
+        this.cp = cp;
+        this.players = players;
     }
 
     public Long getId() {
@@ -85,10 +95,18 @@ public class Room implements Serializable {
         this.status = status;
     }
 
-    @Override
-    public String toString() {
-        return "Room [id=" + id + ", ownerId=" + ownerId + ", maxPlayer=" + maxPlayer + ", players=" + players
-                + ", createAt=" + createAt + ", cp=" + cp + ", status=" + status + "]";
+    public String getOwnerName() {
+        return ownerName;
     }
 
+    public void setOwnerName(String ownerName) {
+        this.ownerName = ownerName;
+    }
+
+    @Override
+    public String toString() {
+        return "Room [id=" + id + ", ownerId=" + ownerId + ", ownerName=" + ownerName + ", maxPlayer=" + maxPlayer + ", players=" + players
+                + ", createAt=" + createAt + ", cp=" + cp + ", status=" + status + "]";
+    }
+    
 }

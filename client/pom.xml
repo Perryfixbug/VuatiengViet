@@ -38,6 +38,11 @@
             <artifactId>jbcrypt</artifactId>
             <version>0.4</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -48,7 +53,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.12.1</version>
                 <configuration>
-                    <release>17.0.2</release>
+                    <release>24</release>
                 </configuration>
             </plugin>
 
@@ -57,8 +62,9 @@
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
+                
                 <configuration>
-                    <mainClass>vuatiengvietpj.App</mainClass>
+                    <mainClass>vuatiengvietpj.ClientApp</mainClass>
                 </configuration>
             </plugin>
         </plugins>
