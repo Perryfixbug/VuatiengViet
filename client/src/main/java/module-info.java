@@ -8,6 +8,9 @@ module vuatiengvietclient {
 
     opens vuatiengvietpj.model to com.google.gson;
 
+    // Allow JavaFX FXMLLoader to access controller classes reflectively for @FXML injection and handlers
+    opens vuatiengvietpj.controller to javafx.fxml;
+
     exports vuatiengvietpj;
     exports vuatiengvietpj.controller;
     exports vuatiengvietpj.model;

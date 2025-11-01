@@ -24,10 +24,12 @@ public class RoomDAO extends DAO {
                     room.setId(roomId);
                     room.setOwnerId(rs.getLong("ownerId"));
                     room.setMaxPlayer(rs.getInt("maxPlayer"));
-                    room.setCreateAt(rs.getTimestamp("createdAt").toInstant());
+                    Timestamp ts = rs.getTimestamp("createdAt");
+                    if (ts != null) room.setCreateAt(ts.toInstant());
                     room.setStatus(rs.getString("status"));
-                    Long cpId = rs.getLong("challengePackId");
-                    if (cpId != null) {
+                    Object cpObj = rs.getObject("challengePackId");
+                    if (cpObj != null) {
+                        Long cpId = rs.getLong("challengePackId");
                         ChallengePack cp = new ChallengePackDAO().getChallengePackById(cpId);
                         room.setCp(cp);
                     }
@@ -35,8 +37,9 @@ public class RoomDAO extends DAO {
                     roomMap.put(roomId, room);
                     rooms.add(room);
                 }
-                Long userId = rs.getLong("userId");
-                if (userId != null) {
+                Object userObj = rs.getObject("userId");
+                if (userObj != null) {
+                    Long userId = rs.getLong("userId");
                     Player player = new Player();
                     player.setUserId(userId);
                     player.setRoomId(roomId);
@@ -63,17 +66,20 @@ public class RoomDAO extends DAO {
                         room.setId(rs.getLong("id"));
                         room.setOwnerId(rs.getLong("ownerId"));
                         room.setMaxPlayer(rs.getInt("maxPlayer"));
-                        room.setCreateAt(rs.getTimestamp("createdAt").toInstant());
+                        Timestamp ts = rs.getTimestamp("createdAt");
+                        if (ts != null) room.setCreateAt(ts.toInstant());
                         room.setStatus(rs.getString("status"));
-                        Long cpId = rs.getLong("challengePackId");
-                        if (cpId != null) {
+                        Object cpObj = rs.getObject("challengePackId");
+                        if (cpObj != null) {
+                            Long cpId = rs.getLong("challengePackId");
                             ChallengePack cp = new ChallengePackDAO().getChallengePackById(cpId);
                             room.setCp(cp);
                         }
                         room.setPlayers(new ArrayList<>());
                     }
-                    Long userId = rs.getLong("userId");
-                    if (userId != 0) {
+                    Object userObj = rs.getObject("userId");
+                    if (userObj != null) {
+                        Long userId = rs.getLong("userId");
                         Player player = new Player();
                         player.setUserId(userId);
                         player.setRoomId(roomId);
@@ -87,6 +93,7 @@ public class RoomDAO extends DAO {
         }
         return room;
     }
+    
     // Lưu 1 phòng mới vào DB
     public void createRoom(Room room) {
         String sql = "INSERT INTO room (id, ownerId, maxPlayer, createdAt, status) VALUES (?, ?, ?, ?, ?)";
@@ -100,6 +107,20 @@ public class RoomDAO extends DAO {
             int affectedRows = ps.executeUpdate();
             if (affectedRows == 0) {
                 throw new SQLException("Creating room failed, no rows affected.");
+            }
+            
+            // Insert owner into player table so DB state reflects in-memory room
+            if (room.getPlayers() != null) {
+                for (Player p : room.getPlayers()) {
+                    if (p != null && p.getUserId() != null) {
+                        addPlayerToRoom(room.getId(), p.getUserId());
+                    }
+                }
+            } else {
+                // if no players provided, still add owner
+                if (room.getOwnerId() != null) {
+                    addPlayerToRoom(room.getId(), room.getOwnerId());
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -148,6 +169,7 @@ public class RoomDAO extends DAO {
             e.printStackTrace();
         }
     }
+    
     // Tạo một challenge pack cho phòng
     public void addChallengePackToRoom(Long roomId, Long cpId) {
         String sql = "UPDATE room SET challengePackId = ? WHERE id = ?";
@@ -159,6 +181,7 @@ public class RoomDAO extends DAO {
             e.printStackTrace();
         }
     }
+    
     // Xóa người chơi khỏi phòng
     public void deletePlayerFromRoom(Long roomId, Long userId) {
         String sql = "DELETE FROM player WHERE userId = ? AND roomId = ?";
@@ -170,6 +193,7 @@ public class RoomDAO extends DAO {
             e.printStackTrace();
         }
     }
+    
     // Thêm người chơi vào phòng
     public void addPlayerToRoom(Long roomId, Long userId) {
         String checkSql = "SELECT COUNT(*) FROM player WHERE userId = ? AND roomId = ?";
@@ -196,6 +220,7 @@ public class RoomDAO extends DAO {
             e.printStackTrace();
         }
     }
+    
     // Xóa phòng theo ID
     public void deleteRoom(Long roomId) {
         String deletePlayersSql = "DELETE FROM player WHERE roomId = ?";

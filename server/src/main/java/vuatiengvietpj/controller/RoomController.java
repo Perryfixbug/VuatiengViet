@@ -20,11 +20,11 @@ public class RoomController extends ServerController {
     public RoomController(Socket clientSocket) throws IOException {
         super(clientSocket);
         this.roomDAO = new RoomDAO();
-        this.gson = new GsonBuilder()
-                .excludeFieldsWithoutExposeAnnotation()
-                .registerTypeAdapter(Instant.class,
-                        (JsonSerializer<Instant>) (src, t, ctx) -> new JsonPrimitive(src.toString()))
-                .create();
+    this.gson = new GsonBuilder()
+        // do not exclude fields without @Expose — we want full model serialization for client
+        .registerTypeAdapter(Instant.class,
+            (JsonSerializer<Instant>) (src, t, ctx) -> new JsonPrimitive(src.toString()))
+        .create();
     }
 
     @Override
@@ -218,16 +218,20 @@ public class RoomController extends ServerController {
     }
 
     public Room joinRoom(Long roomId, Long userId) {
+        System.out.println("RoomController.joinRoom: roomId=" + roomId + ", userId=" + userId);
         Room room = roomDAO.getRoomById(roomId);
         if (room == null || userId == null || room.getMaxPlayer() == 0 ) {
+            System.out.println("RoomController.joinRoom: room null or invalid - room=" + (room==null?"null":"ok") + ", userId=" + userId);
             return null;
         }
         if (room.getPlayers().size() >= room.getMaxPlayer()) {
+            System.out.println("RoomController.joinRoom: room full - " + room.getPlayers().size() + "/" + room.getMaxPlayer());
             return null;
         }
         List<Player> players = room.getPlayers();
         for (Player p : players) {
-            if (p.getUserId().equals(userId)) {
+            if (java.util.Objects.equals(p.getUserId(), userId)) {
+                System.out.println("RoomController.joinRoom: user already in room - userId=" + userId + " already exists");
                 return null;
             }
         }
@@ -236,6 +240,7 @@ public class RoomController extends ServerController {
         players.add(newPlayer);
         room.setPlayers(players);
         roomDAO.addPlayerToRoom(roomId, userId);
+        System.out.println("RoomController.joinRoom: SUCCESS - added userId=" + userId + ", now " + players.size() + " players");
         return room;
     }
 
@@ -251,13 +256,20 @@ public class RoomController extends ServerController {
     }
 
     public Room outRoom(Long roomId, Long userId) {
+        System.out.println("RoomController.outRoom: roomId=" + roomId + ", userId=" + userId);
         Room room = roomDAO.getRoomById(roomId);
-        if (room == null || userId == null) return null;
+        if (room == null || userId == null) {
+            System.out.println("RoomController.outRoom: room or userId null");
+            return null;
+        }
         List<Player> players = room.getPlayers();
-        if (players == null) return null;
+        if (players == null) {
+            System.out.println("RoomController.outRoom: players list null");
+            return null;
+        }
         Player toRemove = null;
         for (Player p : players) {
-            if (p.getUserId().equals(userId)) {
+            if (java.util.Objects.equals(p.getUserId(), userId)) {
                 toRemove = p;
                 break;
             }
@@ -266,12 +278,16 @@ public class RoomController extends ServerController {
             players.remove(toRemove);
             room.setPlayers(players);
             roomDAO.deletePlayerFromRoom(roomId, userId);
+            System.out.println("RoomController.outRoom: SUCCESS - removed userId=" + userId + ", now " + players.size() + " players");
+            
             if (players.isEmpty()) {
                 roomDAO.deleteRoom(roomId);
             } else if (room.getOwnerId().equals(userId)) {
                 room.setOwnerId(players.get(0).getUserId());
                 roomDAO.updateRoom(roomId, room.getOwnerId(), null, null);
             }
+        } else {
+            System.out.println("RoomController.outRoom: player not found in room - userId=" + userId);
         }
         return room;
     }
@@ -279,12 +295,12 @@ public class RoomController extends ServerController {
         if (roomId == null || userId == null || kickedPlayerId == null) return null;
         Room room = roomDAO.getRoomById(roomId);
         if (room == null) return null;
-        if (room.getOwnerId().equals(userId) == false || userId == kickedPlayerId || room.getPlayers().size() <= 1) return null;
+    if (!java.util.Objects.equals(room.getOwnerId(), userId) || java.util.Objects.equals(userId, kickedPlayerId) || room.getPlayers().size() <= 1) return null;
         List<Player> players = room.getPlayers();
         if (players == null) return null;
         Player toRemove = null;
         for (Player p : players) {
-            if (p.getUserId().equals(kickedPlayerId)) {
+            if (java.util.Objects.equals(p.getUserId(), kickedPlayerId)) {
                 toRemove = p;
                 break;
             }
