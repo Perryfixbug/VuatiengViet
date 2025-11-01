@@ -61,19 +61,30 @@ public class UserController extends ServerController {
 
     // đăng nhập
     public Response handleLogin(String data, String ip) {
-        User loginUser = gson.fromJson(data, User.class);
-        User userChecker = userDAO.findByEmail(loginUser.getEmail());
-        if (userChecker == null) {
-            return createErrorResponse(module, "LOGIN", "Tai khoan hoac mat khau khong dung");
-        } else if (BCrypt.checkpw(loginUser.getPassword(), userChecker.getPassword())) {
-            if (SessionManager.isLoggedIn(userChecker.getId())) {
-                SessionManager.destroy(userChecker.getId());
-                // Hủy session cũ
+        try {
+            User loginUser = gson.fromJson(data, User.class);
+            System.out.println("UserController.handleLogin: attempting login for email=" + loginUser.getEmail());
+            
+            User userChecker = userDAO.findByEmail(loginUser.getEmail());
+            System.out.println("UserController.handleLogin: userChecker=" + (userChecker == null ? "null" : "found"));
+            
+            if (userChecker == null) {
+                return createErrorResponse(module, "LOGIN", "Tai khoan hoac mat khau khong dung");
+            } else if (BCrypt.checkpw(loginUser.getPassword(), userChecker.getPassword())) {
+                if (SessionManager.isLoggedIn(userChecker.getId())) {
+                    SessionManager.destroy(userChecker.getId());
+                    // Hủy session cũ
+                }
+                SessionManager.createOrUpdate(userChecker, ip); // cập nhật session với IP của thiết bị mới
+                System.out.println("UserController.handleLogin: login successful for userId=" + userChecker.getId());
+                return createSuccessResponse(module, "LOGIN", gson.toJson(userChecker));
+            } else {
+                return createErrorResponse(module, "LOGIN", "Tai khoan hoac mat khau khong dung");
             }
-            SessionManager.createOrUpdate(userChecker, ip); // cập nhật session với IP của thiết bị mới
-            return createSuccessResponse(module, "LOGIN", gson.toJson(userChecker));
-        } else {
-            return createErrorResponse(module, "LOGIN", "Tai khoan hoac mat khau khong dung");
+        } catch (Exception e) {
+            System.err.println("UserController.handleLogin ERROR: " + e.getMessage());
+            e.printStackTrace();
+            return createErrorResponse(module, "LOGIN", "Server error: " + e.getMessage());
         }
     }
 

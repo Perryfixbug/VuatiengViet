@@ -43,6 +43,8 @@ public class PendingRoomController {
     private java.util.concurrent.ScheduledExecutorService poller;
     // optional callback to notify parent/list controller to refresh room list
     private Runnable onRoomUpdated;
+    // flag để phân biệt tự out hay bị kick
+    private boolean isManualExit = false;
 
     public void setCurrentUserId(Long id) {
         this.currentUserId = id;
@@ -78,6 +80,9 @@ public class PendingRoomController {
             
             // ADD LISTENER CHỈ MỘT LẦN - sau khi đã set room và currentUserId
             addChoiceBoxListenerOnce();
+            
+            // Refresh ngay lần đầu để load tên người chơi (đồng bộ)
+            loadRoomDataFromServer();
             
             // Bắt đầu polling để cập nhật trạng thái phòng
             startPolling();
@@ -162,9 +167,7 @@ public class PendingRoomController {
         }
     }
 
-    /**
-     * Kiểm tra và cập nhật quyền hạn dựa trên vai trò (chủ phòng/thành viên)
-     */
+    // Kiểm tra và cập nhật quyền hạn dựa trên vai trò (chủ phòng/thành viên)
     private void updateOwnerPermissions() {
         if (currentRoom == null || currentUserId == null) {
             cbxNumberPlayer.setDisable(true);
@@ -180,6 +183,22 @@ public class PendingRoomController {
         btnStart.setDisable(!isOwner);
     }
 
+    // Load dữ liệu phòng từ server ngay lập tức (đồng bộ)
+    private void loadRoomDataFromServer() {
+        if (currentRoom == null) return;
+        
+        try (RoomController rc = new RoomController("localhost", 2208)) {
+            Room latest = rc.getRoomById(currentRoom.getId());
+            if (latest != null) {
+                // Cập nhật dữ liệu phòng với thông tin đầy đủ từ server
+                updateRoomData(latest);
+                System.out.println("PendingRoomController - Đã load dữ liệu phòng từ server");
+            }
+        } catch (Exception e) {
+            System.err.println("PendingRoomController.loadRoomDataFromServer - Lỗi: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     private void startPolling() {
         stopPolling();
@@ -192,22 +211,48 @@ public class PendingRoomController {
         });
         System.out.println("PendingRoomController.startPolling: started poller for room=" + (currentRoom == null ? "null" : currentRoom.getId()));
         poller.scheduleAtFixedRate(() -> {
-            try {
-                if (currentRoom == null) return;
-                Room latest;
-                try (RoomController rc = new RoomController("localhost", 2208)) {
-                    latest = rc.getRoomById(currentRoom.getId());
-                } catch (Exception e) {
-                    System.err.println("PendingRoomController.poller - Lỗi kết nối: " + e.getMessage());
-                    return; // Skip this poll cycle
-                }
+            refreshRoomData();
+        }, 2, 2, java.util.concurrent.TimeUnit.SECONDS); // Start after 2s delay, not immediately
+    }
+
+    // Refresh dữ liệu phòng từ server
+    private void refreshRoomData() {
+        try {
+            if (currentRoom == null) return;
+            Room latest;
+            try (RoomController rc = new RoomController("localhost", 2208)) {
+                latest = rc.getRoomById(currentRoom.getId());
+            } catch (Exception e) {
+                System.err.println("PendingRoomController.refreshRoomData - Lỗi kết nối: " + e.getMessage());
+                return; // Skip this poll cycle
+            }
+            
+            if (latest == null) {
+                // Phòng không tồn tại - chỉ đóng cửa sổ, KHÔNG hiển thị thông báo
+                javafx.application.Platform.runLater(() -> {
+                    try {
+                        stopPolling();
+                        if (onRoomUpdated != null) onRoomUpdated.run();
+                    } catch (Exception ignored) {}
+                    try {
+                        javafx.stage.Window w = btnOutRoom.getScene().getWindow();
+                        if (w instanceof javafx.stage.Stage) ((javafx.stage.Stage) w).close();
+                    } catch (Exception ignored) {}
+                });
+                return;
+            }
+            
+            // Kiểm tra xem user hiện tại có còn trong phòng không (bị kick?)
+            if (!isManualExit && currentUserId != null && latest.getPlayers() != null) {
+                boolean stillInRoom = latest.getPlayers().stream()
+                    .anyMatch(p -> p.getUserId().equals(currentUserId));
                 
-                if (latest == null) {
-                    // room no longer exists on server: notify parent and close this pending window
+                if (!stillInRoom) {
+                    // User đã bị kick khỏi phòng
                     javafx.application.Platform.runLater(() -> {
-                        showError("Phòng không tồn tại", "Phòng đã bị xóa hoặc không còn tồn tại trên server.");
+                        stopPolling();
+                        showInfo("Bị Kick", "Bạn đã bị kick khỏi phòng #" + currentRoom.getId());
                         try {
-                            stopPolling();
                             if (onRoomUpdated != null) onRoomUpdated.run();
                         } catch (Exception ignored) {}
                         try {
@@ -217,7 +262,9 @@ public class PendingRoomController {
                     });
                     return;
                 }
-                // if players changed or owner changed or status changed, update UI
+            }
+            
+            // if players changed or owner changed or status changed, update UI
                 boolean changed = false;
                 if (latest.getPlayers() == null && currentRoom.getPlayers() != null) changed = true;
                 else if (latest.getPlayers() != null && currentRoom.getPlayers() == null) changed = true;
@@ -226,23 +273,20 @@ public class PendingRoomController {
                 else if (!java.util.Objects.equals(latest.getStatus(), currentRoom.getStatus())) changed = true;
                 else if (!java.util.Objects.equals(latest.getMaxPlayer(), currentRoom.getMaxPlayer())) changed = true;
                 
-                if (changed) {
-                    Room finalLatest = latest;
-                    javafx.application.Platform.runLater(() -> {
-                        // Update room data WITHOUT triggering setRoom (to avoid re-starting poller)
-                        updateRoomData(finalLatest);
-                    });
-                }
-            } catch (Exception e) {
-                System.err.println("PendingRoomController.poller error: " + e.getMessage());
-                e.printStackTrace();
+            if (changed) {
+                Room finalLatest = latest;
+                javafx.application.Platform.runLater(() -> {
+                    // Update room data WITHOUT triggering setRoom (to avoid re-starting poller)
+                    updateRoomData(finalLatest);
+                });
             }
-        }, 2, 2, java.util.concurrent.TimeUnit.SECONDS); // Start after 2s delay, not immediately
+        } catch (Exception e) {
+            System.err.println("PendingRoomController.refreshRoomData error: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
-    /**
-     * Cập nhật dữ liệu phòng mà KHÔNG restart poller (dùng cho polling update)
-     */
+    // Cập nhật dữ liệu phòng mà KHÔNG restart poller (dùng cho polling update)
     private void updateRoomData(Room room) {
         if (room == null) return;
         
@@ -291,16 +335,17 @@ public class PendingRoomController {
         // Setup player table columns
         try {
             if (tblPlayerList.getColumns().size() >= 2) {
-                // Cột 1: Tên người chơi (hoặc userId nếu không có tên)
+                // Cột 1: Tên người chơi theo format "Tên(#ID)"
                 @SuppressWarnings({"unchecked","rawtypes"})
                 javafx.scene.control.TableColumn<Player, String> col0 = 
                     (javafx.scene.control.TableColumn) tblPlayerList.getColumns().get(0);
                 col0.setCellValueFactory(cell -> {
                     Player p = cell.getValue();
                     if (p == null) return new javafx.beans.property.SimpleStringProperty("");
-                    String text = (p.getName() == null || p.getName().isBlank()) 
-                        ? "User #" + p.getUserId() 
+                    String name = (p.getName() == null || p.getName().isBlank()) 
+                        ? "User" 
                         : p.getName();
+                    String text = name + " (#" + p.getUserId() + ")";
                     return new javafx.beans.property.SimpleStringProperty(text);
                 });
 
@@ -319,6 +364,54 @@ public class PendingRoomController {
                         : "Thành viên";
                     return new javafx.beans.property.SimpleStringProperty(role);
                 });
+
+                // Cột 3: Hành động - Nút Kick (chỉ hiển thị cho chủ phòng và không kick chính mình)
+                if (tblPlayerList.getColumns().size() >= 3) {
+                    @SuppressWarnings({"unchecked","rawtypes"})
+                    javafx.scene.control.TableColumn<Player, Void> col2 = 
+                        (javafx.scene.control.TableColumn) tblPlayerList.getColumns().get(2);
+                    
+                    javafx.util.Callback<javafx.scene.control.TableColumn<Player, Void>, 
+                                        javafx.scene.control.TableCell<Player, Void>> cellFactory = 
+                        new javafx.util.Callback<>() {
+                            @Override
+                            public javafx.scene.control.TableCell<Player, Void> call(
+                                    final javafx.scene.control.TableColumn<Player, Void> param) {
+                                return new javafx.scene.control.TableCell<>() {
+                                    private final javafx.scene.control.Button btnKick = 
+                                        new javafx.scene.control.Button("Kick");
+
+                                    {
+                                        btnKick.setOnAction((javafx.event.ActionEvent event) -> {
+                                            Player player = getTableView().getItems().get(getIndex());
+                                            handleKickPlayer(player);
+                                        });
+                                    }
+
+                                    @Override
+                                    public void updateItem(Void item, boolean empty) {
+                                        super.updateItem(item, empty);
+                                        if (empty) {
+                                            setGraphic(null);
+                                        } else {
+                                            Player player = getTableView().getItems().get(getIndex());
+                                            // Chỉ hiển thị nút Kick nếu:
+                                            // 1. User hiện tại là chủ phòng
+                                            // 2. Không phải kick chính mình
+                                            if (currentRoom != null && currentUserId != null && 
+                                                currentUserId.equals(currentRoom.getOwnerId()) &&
+                                                !currentUserId.equals(player.getUserId())) {
+                                                setGraphic(btnKick);
+                                            } else {
+                                                setGraphic(null);
+                                            }
+                                        }
+                                    }
+                                };
+                            }
+                        };
+                    col2.setCellFactory(cellFactory);
+                }
             } else {
                 // fallback: create columns if FXML didn't provide them
                 javafx.scene.control.TableColumn<Player, String> colPlayer = 
@@ -381,6 +474,9 @@ public class PendingRoomController {
             return;
         }
 
+        // Đánh dấu là tự out (không phải bị kick)
+        isManualExit = true;
+
         try (RoomController rc = new RoomController("localhost", 2208)) {
             Response response = rc.outRoom(currentRoom.getId(), currentUserId);
             
@@ -416,6 +512,9 @@ public class PendingRoomController {
             System.err.println("PendingRoomController - Exception khi rời phòng: " + e.getMessage());
             e.printStackTrace();
             showError("Rời phòng", "Không thể kết nối đến server: " + e.getMessage());
+        } finally {
+            // Reset flag
+            isManualExit = false;
         }
     }
 
@@ -474,6 +573,60 @@ public class PendingRoomController {
             suppressSelectionEvents = true;
             cbxNumberPlayer.setValue(currentRoom.getMaxPlayer());
             suppressSelectionEvents = false;
+        }
+    }
+
+    /**
+     * Xử lý kick người chơi khỏi phòng (chỉ chủ phòng)
+     */
+    private void handleKickPlayer(Player player) {
+        if (player == null || currentRoom == null || currentUserId == null) {
+            showError("Kick người chơi", "Thông tin không hợp lệ");
+            return;
+        }
+
+        // Kiểm tra quyền: chỉ chủ phòng mới được kick
+        if (!currentUserId.equals(currentRoom.getOwnerId())) {
+            showError("Kick người chơi", "Chỉ chủ phòng mới được kick người chơi!");
+            return;
+        }
+
+        // Không thể kick chính mình
+        if (currentUserId.equals(player.getUserId())) {
+            showError("Kick người chơi", "Bạn không thể kick chính mình!");
+            return;
+        }
+
+        // Confirm trước khi kick
+        javafx.scene.control.Alert confirmAlert = new javafx.scene.control.Alert(
+            javafx.scene.control.Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Xác nhận Kick");
+        confirmAlert.setHeaderText(null);
+        String playerName = (player.getName() == null || player.getName().isBlank()) 
+            ? "User #" + player.getUserId() 
+            : player.getName();
+        confirmAlert.setContentText("Bạn có chắc muốn kick " + playerName + " khỏi phòng?");
+
+        java.util.Optional<javafx.scene.control.ButtonType> result = confirmAlert.showAndWait();
+        if (result.isPresent() && result.get() == javafx.scene.control.ButtonType.OK) {
+            // Thực hiện kick
+            try (RoomController rc = new RoomController("localhost", 2208)) {
+                Response response = rc.kickPlayer(currentRoom.getId(), currentUserId, player.getUserId());
+                
+                if (response != null && response.isSuccess()) {
+                    System.out.println("PendingRoomController - Kick thành công player: " + player.getUserId());
+                    showInfo("Kick người chơi", "Đã kick " + playerName + " khỏi phòng");
+                    // Room sẽ tự động cập nhật qua polling
+                } else {
+                    String errorMsg = (response != null) ? response.getData() : "Không nhận được phản hồi từ server";
+                    System.err.println("PendingRoomController - Lỗi khi kick: " + errorMsg);
+                    showError("Kick người chơi", "Không thể kick: " + errorMsg);
+                }
+            } catch (Exception e) {
+                System.err.println("PendingRoomController - Exception khi kick: " + e.getMessage());
+                e.printStackTrace();
+                showError("Kick người chơi", "Không thể kết nối đến server: " + e.getMessage());
+            }
         }
     }
 

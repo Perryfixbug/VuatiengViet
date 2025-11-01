@@ -8,6 +8,7 @@ public class Player implements Serializable {
     private Long userId;
     private Long roomId;
     private int score;
+    private String name; // Tên người chơi (fullName từ User)
 
     public Player() {
 
@@ -50,6 +51,14 @@ public class Player implements Serializable {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
 }

@@ -71,6 +71,7 @@
         <columns>
           <TableColumn prefWidth="117.60003662109375" text="Người chơi" />
           <TableColumn prefWidth="84.79998779296875" text="Vai trò" />
+          <TableColumn prefWidth="69.5999755859375" text="Hành động" />
         </columns>
       </TableView>
    </children>

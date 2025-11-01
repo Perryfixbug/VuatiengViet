@@ -12,7 +12,11 @@ public class RoomDAO extends DAO {
     // Lấy danh sách phòng
     public List<Room> getAllRooms() {
         List<Room> rooms = new ArrayList<>();
-        String sql = "SELECT r.*, p.userId, p.score FROM room r LEFT JOIN player p ON r.id = p.roomId";
+        String sql = "SELECT r.*, p.userId, p.score, u.fullName as playerName, o.fullName as ownerName " +
+                     "FROM room r " +
+                     "LEFT JOIN player p ON r.id = p.roomId " +
+                     "LEFT JOIN user u ON p.userId = u.id " +
+                     "LEFT JOIN user o ON r.ownerId = o.id";
         try (PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             Map<Long, Room> roomMap = new HashMap<>();
@@ -23,6 +27,7 @@ public class RoomDAO extends DAO {
                     room = new Room();
                     room.setId(roomId);
                     room.setOwnerId(rs.getLong("ownerId"));
+                    room.setOwnerName(rs.getString("ownerName"));
                     room.setMaxPlayer(rs.getInt("maxPlayer"));
                     Timestamp ts = rs.getTimestamp("createdAt");
                     if (ts != null) room.setCreateAt(ts.toInstant());
@@ -44,6 +49,9 @@ public class RoomDAO extends DAO {
                     player.setUserId(userId);
                     player.setRoomId(roomId);
                     player.setScore(rs.getInt("score"));
+                    String playerName = rs.getString("playerName");
+                    player.setName(playerName);
+                    System.out.println("RoomDAO.getAllRooms - Player: userId=" + userId + ", name=" + playerName);
                     room.getPlayers().add(player);
                 }
             }
@@ -56,7 +64,12 @@ public class RoomDAO extends DAO {
     // Lấy thông tin phòng theo ID
     public Room getRoomById(Long roomId) {
         Room room = null;
-        String sql = "SELECT r.*, p.userId, p.score FROM room r LEFT JOIN player p ON r.id = p.roomId WHERE r.id = ?";
+        String sql = "SELECT r.*, p.userId, p.score, u.fullName as playerName, o.fullName as ownerName " +
+                     "FROM room r " +
+                     "LEFT JOIN player p ON r.id = p.roomId " +
+                     "LEFT JOIN user u ON p.userId = u.id " +
+                     "LEFT JOIN user o ON r.ownerId = o.id " +
+                     "WHERE r.id = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, roomId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -65,6 +78,7 @@ public class RoomDAO extends DAO {
                         room = new Room();
                         room.setId(rs.getLong("id"));
                         room.setOwnerId(rs.getLong("ownerId"));
+                        room.setOwnerName(rs.getString("ownerName"));
                         room.setMaxPlayer(rs.getInt("maxPlayer"));
                         Timestamp ts = rs.getTimestamp("createdAt");
                         if (ts != null) room.setCreateAt(ts.toInstant());
@@ -84,6 +98,9 @@ public class RoomDAO extends DAO {
                         player.setUserId(userId);
                         player.setRoomId(roomId);
                         player.setScore(rs.getInt("score"));
+                        String playerName = rs.getString("playerName");
+                        player.setName(playerName);
+                        System.out.println("RoomDAO.getRoomById - Player: userId=" + userId + ", name=" + playerName);
                         room.getPlayers().add(player);
                     }
                 }

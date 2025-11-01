@@ -13,6 +13,8 @@ public class Room implements Serializable {
     @Expose
     private Long ownerId;
     @Expose
+    private String ownerName; // Tên chủ phòng
+    @Expose
     private int maxPlayer;
     @Expose
     private List<Player> players = new ArrayList<>();
@@ -93,9 +95,17 @@ public class Room implements Serializable {
         this.status = status;
     }
 
+    public String getOwnerName() {
+        return ownerName;
+    }
+
+    public void setOwnerName(String ownerName) {
+        this.ownerName = ownerName;
+    }
+
     @Override
     public String toString() {
-        return "Room [id=" + id + ", ownerId=" + ownerId + ", maxPlayer=" + maxPlayer + ", players=" + players
+        return "Room [id=" + id + ", ownerId=" + ownerId + ", ownerName=" + ownerName + ", maxPlayer=" + maxPlayer + ", players=" + players
                 + ", createAt=" + createAt + ", cp=" + cp + ", status=" + status + "]";
     }
     

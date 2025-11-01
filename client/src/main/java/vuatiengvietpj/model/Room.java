@@ -7,6 +7,7 @@ import java.util.List;
 public class Room {
     private Long id;
     private Long ownerId;
+    private String ownerName; // Tên chủ phòng
     private int maxPlayer;
     private List<Player> players = new ArrayList<>();
     private Instant createAt;
@@ -72,9 +73,17 @@ public class Room {
         this.status = status;
     }
 
+    public String getOwnerName() {
+        return ownerName;
+    }
+
+    public void setOwnerName(String ownerName) {
+        this.ownerName = ownerName;
+    }
+
     @Override
     public String toString() {
-        return "Room [id=" + id + ", ownerId=" + ownerId + ", maxPlayer=" + maxPlayer + ", players=" + players
+        return "Room [id=" + id + ", ownerId=" + ownerId + ", ownerName=" + ownerName + ", maxPlayer=" + maxPlayer + ", players=" + players
                 + ", createAt=" + createAt + ", status=" + status + "]";
     }
 }

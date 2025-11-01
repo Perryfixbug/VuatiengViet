@@ -79,8 +79,17 @@ public class ListRoomController {
         colId.setPrefWidth(106);
 
         // Cột "Chủ phòng"
-        TableColumn<Room, Long> colOwner = new TableColumn<>("Chủ phòng");
-        colOwner.setCellValueFactory(new PropertyValueFactory<>("ownerId"));
+        TableColumn<Room, String> colOwner = new TableColumn<>("Chủ phòng");
+        colOwner.setCellValueFactory(cellData -> {
+            Room room = cellData.getValue();
+            String ownerName = room.getOwnerName();
+            if (ownerName != null && !ownerName.trim().isEmpty()) {
+                return new javafx.beans.property.SimpleStringProperty(ownerName);
+            } else {
+                // Fallback về ID nếu không có tên
+                return new javafx.beans.property.SimpleStringProperty("User #" + room.getOwnerId());
+            }
+        });
         colOwner.setPrefWidth(110);
 
         // Cột "Số người" - hiển thị dạng "current/max"
@@ -202,36 +211,58 @@ public class ListRoomController {
                 PendingRoomController pendingController = (PendingRoomController) controller;
                 pendingController.setCurrentUserId(this.currentUserId);
 
-                // Set callback để reload danh sách khi pending room đóng
+                // Set callback để quay lại ListRoom khi rời phòng
                 pendingController.setOnRoomUpdated(() -> {
-                    loadAllRooms();
+                    // Quay lại màn hình ListRoom
+                    returnToListRoom();
                 });
 
                 pendingController.setRoom(room);
             }
 
-            Stage stage = new Stage();
-            stage.setTitle("Phòng chờ - Phòng #" + room.getId());
-            stage.setScene(new Scene(root));
-
-            // Khi đóng cửa sổ pending room, reload danh sách phòng
-            stage.setOnHidden(evt -> {
-                System.out.println("ListRoomController - PendingRoom đã đóng, reload danh sách");
-                if (controller instanceof PendingRoomController) {
-                    try {
-                        ((PendingRoomController) controller).stopPollingPublic();
-                    } catch (Exception ignored) {
-                    }
-                }
-                loadAllRooms();
-            });
-
-            stage.show();
+            // Sử dụng primaryStage hiện tại thay vì tạo Stage mới
+            if (primaryStage != null) {
+                Scene scene = new Scene(root);
+                primaryStage.setTitle("Phòng chờ - Phòng #" + room.getId());
+                primaryStage.setScene(scene);
+                primaryStage.show();
+            } else {
+                System.err.println("ListRoomController - primaryStage is null!");
+                showAlert("Lỗi", "Không thể mở phòng chờ: Lỗi Stage");
+            }
 
         } catch (IOException e) {
             System.err.println("ListRoomController - Lỗi khi mở PendingRoom: " + e.getMessage());
             e.printStackTrace();
             showAlert("Lỗi", "Không thể mở giao diện phòng chờ: " + e.getMessage());
+        }
+    }
+
+    // Quay lại màn hình ListRoom
+    private void returnToListRoom() {
+        try {
+            System.out.println("ListRoomController - Quay lại ListRoom");
+            
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/vuatiengvietpj/ListRoom.fxml"));
+            Parent root = loader.load();
+
+            Object controller = loader.getController();
+            if (controller instanceof ListRoomController) {
+                ListRoomController listController = (ListRoomController) controller;
+                listController.setCurrentUserId(this.currentUserId);
+                listController.setPrimaryStage(this.primaryStage);
+            }
+
+            if (primaryStage != null) {
+                Scene scene = new Scene(root);
+                primaryStage.setTitle("Danh sách phòng");
+                primaryStage.setScene(scene);
+                primaryStage.show();
+            }
+        } catch (IOException e) {
+            System.err.println("ListRoomController - Lỗi khi quay lại ListRoom: " + e.getMessage());
+            e.printStackTrace();
+            showAlert("Lỗi", "Không thể quay lại danh sách phòng: " + e.getMessage());
         }
     }
 
