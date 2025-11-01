@@ -6,6 +6,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 
+// Main controller giao diện chính (home)
 public class MainController {
     private String host = "localhost";
     private int port = 2208;

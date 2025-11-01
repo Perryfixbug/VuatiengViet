@@ -5,6 +5,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
+// class cấu hình các hàm chuyển trang giao diện
 public class SceneManager {
     private static Stage primaryStage;
     private static UserController userController; // instance chung
@@ -46,6 +47,7 @@ public class SceneManager {
         }
     }
 
+    // hàm tự chỉnh
     public static void loadScene(String fxmlPath) {
         try {
             Parent root = FXMLLoader.load(SceneManager.class.getResource(fxmlPath));
