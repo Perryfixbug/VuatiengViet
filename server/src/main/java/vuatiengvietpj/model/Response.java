@@ -3,25 +3,25 @@ package vuatiengvietpj.model;
 import java.io.Serializable;
 
 public class Response implements Serializable {
-    private String modunle;
+    private String module;
     private String maLenh;
     private String data;
     private boolean success;
     private static final long serialVersionUID = 1L;
 
     public Response(String module, String maLenh, String data, boolean success) {
-        this.modunle = module;
+        this.module = module;
         this.maLenh = maLenh;
         this.data = data;
         this.success = success;
     }
 
-    public String getModunle() {
-        return modunle;
+    public String getmodule() {
+        return module;
     }
 
-    public void setModunle(String modunl) {
-        this.modunle = modunl;
+    public void setmodule(String module) {
+        this.module = module;
     }
 
     public String getMaLenh() {
@@ -50,7 +50,7 @@ public class Response implements Serializable {
 
     @Override
     public String toString() {
-        return "Response [modunle=" + modunle + ", maLenh=" + maLenh + ", data=" + data + ", success=" + success + "]";
+        return "Response [module=" + module + ", maLenh=" + maLenh + ", data=" + data + ", success=" + success + "]";
     }
 
 }

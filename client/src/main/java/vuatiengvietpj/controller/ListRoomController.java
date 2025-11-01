@@ -21,6 +21,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import vuatiengvietpj.model.Room;
+import vuatiengvietpj.model.User;
 import vuatiengvietpj.model.Response;
 
 public class ListRoomController {
@@ -50,9 +51,14 @@ public class ListRoomController {
     private TextField txtSearchRoom;
 
     private Long currentUserId; // ID người dùng hiện tại (sẽ được set từ nơi khác)
+    private Stage primaryStage;
 
     public void setCurrentUserId(Long userId) {
         this.currentUserId = userId;
+    }
+
+    public void setPrimaryStage(Stage stage) {
+        this.primaryStage = stage;
     }
 
     @FXML
@@ -62,7 +68,7 @@ public class ListRoomController {
         loadAllRooms();
     }
 
-    //Thiết lập các cột cho bảng danh sách phòng
+    // Thiết lập các cột cho bảng danh sách phòng
 
     private void setupTableColumns() {
         tblRoomList.getColumns().clear();
@@ -95,7 +101,7 @@ public class ListRoomController {
         // Cột "Hành động" - nút "Vào"
         TableColumn<Room, Void> colAction = new TableColumn<>("Hành động");
         colAction.setPrefWidth(90);
-        
+
         Callback<TableColumn<Room, Void>, TableCell<Room, Void>> cellFactory = new Callback<>() {
             @Override
             public TableCell<Room, Void> call(final TableColumn<Room, Void> param) {
@@ -128,11 +134,11 @@ public class ListRoomController {
         tblRoomList.getColumns().addAll(colId, colOwner, colPlayers, colStatus, colAction);
     }
 
-    //Tải danh sách tất cả các phòng từ server
+    // Tải danh sách tất cả các phòng từ server
     private void loadAllRooms() {
         try (RoomController rc = new RoomController("localhost", 2208)) {
             Response response = rc.getAllRooms();
-            
+
             if (response != null && response.isSuccess()) {
                 List<Room> rooms = rc.parseRooms(response.getData());
                 ObservableList<Room> roomList = FXCollections.observableArrayList(rooms);
@@ -149,10 +155,10 @@ public class ListRoomController {
         }
     }
 
-    //Tham gia vào phòng theo ID
+    // Tham gia vào phòng theo ID
     private void joinRoomById(Long roomId) {
         System.out.println("ListRoomController.joinRoomById() - Tham gia phòng ID: " + roomId);
-        
+
         if (currentUserId == null) {
             showAlert("Thông báo", "Bạn chưa đăng nhập!");
             return;
@@ -160,7 +166,7 @@ public class ListRoomController {
 
         try (RoomController rc = new RoomController("localhost", 2208)) {
             Response response = rc.joinRoom(roomId, currentUserId);
-            
+
             if (response != null && response.isSuccess()) {
                 Room joinedRoom = rc.parseRoom(response.getData());
                 System.out.println("ListRoomController - Tham gia phòng thành công: " + roomId);
@@ -177,7 +183,7 @@ public class ListRoomController {
         }
     }
 
-    //Mở giao diện phòng chờ (PendingRoom)
+    // Mở giao diện phòng chờ (PendingRoom)
     private void openPendingRoom(Room room) {
         if (room == null) {
             System.err.println("ListRoomController.openPendingRoom() - Room null!");
@@ -186,41 +192,42 @@ public class ListRoomController {
 
         try {
             System.out.println("ListRoomController - Mở PendingRoom cho phòng ID: " + room.getId());
-            
+
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/vuatiengvietpj/PendingRoom.fxml"));
             Parent root = loader.load();
-            
+
             // Lấy controller của PendingRoom và set dữ liệu
             Object controller = loader.getController();
             if (controller instanceof PendingRoomController) {
                 PendingRoomController pendingController = (PendingRoomController) controller;
                 pendingController.setCurrentUserId(this.currentUserId);
-                
+
                 // Set callback để reload danh sách khi pending room đóng
                 pendingController.setOnRoomUpdated(() -> {
                     loadAllRooms();
                 });
-                
+
                 pendingController.setRoom(room);
             }
-            
+
             Stage stage = new Stage();
             stage.setTitle("Phòng chờ - Phòng #" + room.getId());
             stage.setScene(new Scene(root));
-            
+
             // Khi đóng cửa sổ pending room, reload danh sách phòng
             stage.setOnHidden(evt -> {
                 System.out.println("ListRoomController - PendingRoom đã đóng, reload danh sách");
                 if (controller instanceof PendingRoomController) {
                     try {
                         ((PendingRoomController) controller).stopPollingPublic();
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
                 loadAllRooms();
             });
-            
+
             stage.show();
-            
+
         } catch (IOException e) {
             System.err.println("ListRoomController - Lỗi khi mở PendingRoom: " + e.getMessage());
             e.printStackTrace();
@@ -230,14 +237,33 @@ public class ListRoomController {
 
     @FXML
     void OnClickBack(ActionEvent event) {
-        // Tạm để trống - sẽ implement sau
-        System.out.println("ListRoomController - Nút Trở về được nhấn (chưa implement)");
+        try {
+            UserController userController = new UserController();
+            User loggedInUser = userController.getIn4(currentUserId);
+            userController.disconnect();
+
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/vuatiengvietpj/Home.fxml"));
+            Parent root = loader.load();
+            Scene scene = new Scene(root);
+
+            Object controller = loader.getController();
+            if (controller instanceof HomeController) {
+                ((HomeController) controller).setCurrentUser(loggedInUser);
+                ((HomeController) controller).setPrimaryStage(primaryStage);
+            }
+            primaryStage.setScene(scene);
+            primaryStage.show();
+        } catch (Exception e) {
+            System.err.println("Lỗi quay về Home: " + e.getMessage());
+            e.printStackTrace(); // thêm stack trace
+            showAlert("Lỗi", "Không thể quay về trang chủ: " + e.getMessage()); // thêm alert
+        }
     }
 
     @FXML
     void OnClickCreate(ActionEvent event) {
         System.out.println("ListRoomController.OnClickCreate() - Tạo phòng mới");
-        
+
         if (currentUserId == null) {
             showAlert("Thông báo", "Bạn chưa đăng nhập!");
             return;
@@ -245,7 +271,7 @@ public class ListRoomController {
 
         try (RoomController rc = new RoomController("localhost", 2208)) {
             Response response = rc.createRoom(currentUserId);
-            
+
             if (response != null && response.isSuccess()) {
                 Room createdRoom = rc.parseRoom(response.getData());
                 System.out.println("ListRoomController - Tạo phòng thành công, ID: " + createdRoom.getId());
@@ -265,14 +291,14 @@ public class ListRoomController {
     @FXML
     void OnClickJoin(ActionEvent event) {
         System.out.println("ListRoomController.OnClickJoin() - Vào nhanh");
-        
+
         if (currentUserId == null) {
             showAlert("Thông báo", "Bạn chưa đăng nhập!");
             return;
         }
 
         ObservableList<Room> rooms = tblRoomList.getItems();
-        
+
         if (rooms == null || rooms.isEmpty()) {
             showAlert("Thông báo", "Không có phòng nào để tham gia!");
             return;
@@ -282,7 +308,7 @@ public class ListRoomController {
         for (Room room : rooms) {
             int currentPlayers = (room.getPlayers() != null) ? room.getPlayers().size() : 0;
             int maxPlayers = room.getMaxPlayer();
-            
+
             if (currentPlayers < maxPlayers) {
                 System.out.println("ListRoomController - Tìm thấy phòng chưa đầy: " + room.getId());
                 joinRoomById(room.getId());
@@ -308,9 +334,9 @@ public class ListRoomController {
     @FXML
     void searchRoom(ActionEvent event) {
         System.out.println("ListRoomController.searchRoom() - Tìm kiếm phòng");
-        
+
         String searchText = txtSearchRoom.getText();
-        
+
         if (searchText == null || searchText.trim().isEmpty()) {
             showAlert("Thông báo", "Vui lòng nhập mã phòng cần tìm!");
             return;
@@ -328,24 +354,24 @@ public class ListRoomController {
 
         try (RoomController rc = new RoomController("localhost", 2208)) {
             Room room = rc.getRoomById(roomId);
-            
+
             if (room != null) {
                 System.out.println("ListRoomController - Tìm thấy phòng: " + roomId);
-                
+
                 if (currentUserId == null) {
                     showAlert("Thông báo", "Bạn chưa đăng nhập!");
                     return;
                 }
-                
+
                 // Kiểm tra phòng có đầy không
                 int currentPlayers = (room.getPlayers() != null) ? room.getPlayers().size() : 0;
                 int maxPlayers = room.getMaxPlayer();
-                
+
                 if (currentPlayers >= maxPlayers) {
                     showAlert("Thông báo", "Phòng đã đầy!");
                     return;
                 }
-                
+
                 joinRoomById(roomId);
             } else {
                 System.err.println("ListRoomController - Không tìm thấy phòng: " + roomId);

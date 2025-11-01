@@ -22,11 +22,12 @@ public abstract class ClientController {
     private void connectNewSocket() throws IOException {
         // close any previous resources
         try {
-            if (this.socket != null && !this.socket.isClosed()) this.socket.close();
+            if (this.socket != null && !this.socket.isClosed())
+                this.socket.close();
         } catch (Exception ignored) {
         }
-    System.out.println("ClientController.connectNewSocket: connecting to " + host + ":" + port);
-    socket = new Socket(host, port);
+        System.out.println("ClientController.connectNewSocket: connecting to " + host + ":" + port);
+        socket = new Socket(host, port);
         // enable keep-alive to help with intermediate NAT/firewall cases
         try {
             socket.setKeepAlive(true);

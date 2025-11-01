@@ -1,8 +1,7 @@
 package vuatiengvietpj.dao;
 
 import vuatiengvietpj.model.User;
-import java.sql.Connection;
-import java.sql.DriverManager;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -10,18 +9,16 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-
-import org.mindrot.jbcrypt.BCrypt;
 
 public class UserDAO extends DAO {
     // create user trong db
     public boolean createUser(User user) {
-        String sql = "INSERT INTO users (full_name, email, password, create_at, update_at, total_score) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO user (fullName, email, password, createAt, updateAt, totalScore) VALUES (?, ?, ?, ?, ?, ?)";
         try {
             getDBconnection();
             PreparedStatement stmt = con.prepareStatement(sql);
             Instant now = Instant.now();
+            stmt.setNull(1, java.sql.Types.BIGINT);
             stmt.setString(1, user.getFullName());
             stmt.setString(2, user.getEmail());
             stmt.setString(3, user.getPassword());
@@ -41,7 +38,7 @@ public class UserDAO extends DAO {
     }
 
     public boolean changePassword(String email, String newPassword) {
-        String sql = "UPDATE users SET password = ?, update_at = ? WHERE email = ?";
+        String sql = "UPDATE user SET password = ?, updateAt = ? WHERE email = ?";
 
         try {
             getDBconnection();
@@ -64,7 +61,7 @@ public class UserDAO extends DAO {
     }
 
     public boolean updateScore(Long userId, Long newScore) {
-        String sql = "UPDATE users SET total_score = ?, update_at = ? WHERE id = ?";
+        String sql = "UPDATE user SET totalScore = ?, updateAt = ? WHERE id = ?";
 
         try {
             getDBconnection();
@@ -88,7 +85,7 @@ public class UserDAO extends DAO {
     }
 
     public User findById(Long id) {
-        String sql = "SELECT * FROM users WHERE id = ?";
+        String sql = "SELECT * FROM user WHERE id = ?";
 
         try {
             getDBconnection();
@@ -117,7 +114,7 @@ public class UserDAO extends DAO {
     }
 
     public User findByEmail(String email) {
-        String sql = "SELECT * FROM users WHERE email = ?";
+        String sql = "SELECT * FROM user WHERE email = ?";
 
         try {
             getDBconnection();
@@ -146,7 +143,7 @@ public class UserDAO extends DAO {
     }
 
     public List<User> getUsers(int offset, int limit) {
-        String sql = "SELECT * FROM users ORDER BY total_score DESC LIMIT ? OFFSET ?";
+        String sql = "SELECT * FROM user ORDER BY totalScore DESC LIMIT ? OFFSET ?";
         List<User> users = new ArrayList<>();
 
         try {
@@ -165,7 +162,7 @@ public class UserDAO extends DAO {
             stmt.close();
 
         } catch (SQLException e) {
-            System.err.println("Error getting users: " + e.getMessage());
+            System.err.println("Error getting user: " + e.getMessage());
         } finally {
             closeConnection();
         }
@@ -174,7 +171,7 @@ public class UserDAO extends DAO {
     }
 
     public boolean emailExists(String email) {
-        String sql = "SELECT COUNT(*) as count FROM users WHERE email = ?";
+        String sql = "SELECT COUNT(*) as count FROM user WHERE email = ?";
 
         try {
             getDBconnection();
@@ -207,21 +204,21 @@ public class UserDAO extends DAO {
         User user = new User();
 
         user.setId(rs.getLong("id"));
-        user.setFullName(rs.getString("full_name"));
+        user.setFullName(rs.getString("fullName"));
         user.setEmail(rs.getString("email"));
         user.setPassword(rs.getString("password"));
 
-        Timestamp createAt = rs.getTimestamp("create_at");
+        Timestamp createAt = rs.getTimestamp("createAt");
         if (createAt != null) {
             user.setCreateAt(createAt.toInstant());
         }
 
-        Timestamp updateAt = rs.getTimestamp("update_at");
+        Timestamp updateAt = rs.getTimestamp("updateAt");
         if (updateAt != null) {
             user.setUpdateAt(updateAt.toInstant());
         }
 
-        user.setTotalScore(rs.getLong("total_score"));
+        user.setTotalScore(rs.getLong("totalScore"));
 
         return user;
     }

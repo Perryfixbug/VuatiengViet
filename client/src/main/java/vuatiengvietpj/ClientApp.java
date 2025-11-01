@@ -5,7 +5,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import vuatiengvietpj.controller.ListRoomController;
+import vuatiengvietpj.controller.UserController;
 
 public class ClientApp extends Application {
 
@@ -15,18 +15,26 @@ public class ClientApp extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/vuatiengvietpj/ListRoom.fxml"));
-        Parent root = loader.load();
+        try {
+            System.out.println("Loading Auth.fxml...");
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/vuatiengvietpj/Auth.fxml"));
+            Parent root = loader.load();
+            System.out.println("Root loaded: " + (root != null));
+            Scene scene = new Scene(root);
+            stage.setScene(scene);
+            stage.setTitle("Auth");
 
-        // set a dummy logged-in user id for testing so create/join buttons work
-        Object controller = loader.getController();
-        if (controller instanceof ListRoomController) {
-            ((ListRoomController) controller).setCurrentUserId(1L);
+            // Set primaryStage cho UserController
+            Object controller = loader.getController();
+            if (controller instanceof UserController) {
+                ((UserController) controller).setPrimaryStage(stage);
+            }
+
+            stage.show();
+            System.out.println("Stage shown");
+        } catch (Exception e) {
+            System.err.println("Error loading Auth.fxml: " + e.getMessage());
+            e.printStackTrace();
         }
-
-        Scene scene = new Scene(root);
-        stage.setTitle("Room List");
-        stage.setScene(scene);
-        stage.show();
     }
 }

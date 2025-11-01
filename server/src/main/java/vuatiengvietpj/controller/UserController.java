@@ -2,11 +2,15 @@ package vuatiengvietpj.controller;
 
 import java.net.*;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
+import com.google.gson.reflect.TypeToken;
+
 import org.mindrot.jbcrypt.BCrypt;
 import vuatiengvietpj.dao.UserDAO;
 import vuatiengvietpj.model.User;
@@ -20,17 +24,17 @@ public class UserController extends ServerController {
     private Gson gson;
 
     public UserController(Socket clientSocket) throws java.io.IOException {
-        super(clientSocket);
+        // xóa super(clientSocket);
+        this.clientSocket = clientSocket; // thêm nếu cần access socket
         this.gson = new GsonBuilder()
                 .excludeFieldsWithoutExposeAnnotation()
                 .registerTypeAdapter(Instant.class,
                         (JsonSerializer<Instant>) (src, t, ctx) -> new JsonPrimitive(src.toString()))
                 .create();
-
     }
 
     @Override
-    protected Response process(Request request) throws java.io.IOException {
+    public Response process(Request request) throws java.io.IOException {
         String data = request.getData();
         String ip = request.getIp();
         return switch (request.getMaLenh()) {
@@ -39,9 +43,15 @@ public class UserController extends ServerController {
             case "LOGOUT" -> handleLogOut(data);
             case "CGPASS" -> handleChangePassword(data);
             case "ALIVE" -> handleCheckAlive(data);
+            case "ONUSER" -> handleGetOnlineUsers();
+            case "GETIN4" -> handleGetIn4(data);
             // case "FGPASS" -> handleForgetPassword(data);
             default -> createErrorResponse(module, request.getMaLenh(), "Hành động không hợp lệ");
         };
+    }
+
+    public Response handleGetIn4(String data) {
+        return createSuccessResponse(module, "GETIN4", gson.toJson(userDAO.findById(Long.parseLong(data))));
     }
 
     // check client còn sống k
@@ -104,47 +114,9 @@ public class UserController extends ServerController {
 
     }
 
-    // email
-    // public void handleForgetPassword(String str) {
-    // try {
-    // String[] parts = str.split(",");
-    // String email = parts[0].trim();
-    // // Kiểm tra email có tồn tại
-    // User user = userDAO.findByEmail(email);
-    // if (user != null) {
-    // // Tạo mật khẩu mới ngẫu nhiên (6 ký tự)
-    // String newPassword = generateRandomPassword();
-
-    // // Cập nhật mật khẩu mới
-    // boolean success = userDAO.changePassword(user.getEmail(),
-    // BCrypt.hashpw(newPassword, BCrypt.gensalt(12)));
-
-    // if (success) {
-    // System.out.println("Mat khau moi cua email" + user.getEmail() + " "
-    // + newPassword);
-    // } else {
-
-    // }
-    // } else {
-    // System.out.println("Email không tồn tại: " + email);
-    // }
-
-    // } catch (Exception e) {
-    // System.err.println("Lỗi handleForgetPassword: " + e.getMessage());
-    // }
-    // }
-
-    // private String generateRandomPassword() {
-    // String chars =
-    // "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    // StringBuilder password = new StringBuilder();
-
-    // for (int i = 0; i < 6; i++) {
-    // int index = (int) (Math.random() * chars.length());
-    // password.append(chars.charAt(index));
-    // }
-
-    // return password.toString();
-    // }
+    public Response handleGetOnlineUsers() {
+        List<User> users = SessionManager.getOnlineUsers();
+        return createSuccessResponse(module, "ONUSER", gson.toJson(users));
+    }
 
 }

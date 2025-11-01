@@ -3,14 +3,14 @@ package vuatiengvietpj.model;
 import java.io.Serializable;
 
 public class Request implements Serializable {
-    private String modunle;
+    private String module;
     private String maLenh;
     private String data;
     private String ip;
     private static final long serialVersionUID = 1L;
 
     public Request(String module, String maLenh, String data) {
-        this.modunle = module;
+        this.module = module;
         this.maLenh = maLenh;
         this.data = data;
 
@@ -24,12 +24,12 @@ public class Request implements Serializable {
         this.ip = ip;
     }
 
-    public String getModunle() {
-        return modunle;
+    public String getModule() {
+        return module;
     }
 
-    public void setModunl(String modunl) {
-        this.modunle = modunl;
+    public void setmodule(String module) {
+        this.module = module;
     }
 
     public String getMaLenh() {
@@ -50,6 +50,6 @@ public class Request implements Serializable {
 
     @Override
     public String toString() {
-        return "Request [modunle=" + modunle + ", maLenh=" + maLenh + ", data=" + data + "]";
+        return "Request [module=" + module + ", maLenh=" + maLenh + ", data=" + data + "]";
     }
 }

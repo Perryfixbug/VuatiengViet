@@ -11,6 +11,10 @@ public abstract class ServerController {
     protected ObjectInputStream in;
     protected ObjectOutputStream out;
 
+    public ServerController() {
+
+    }
+
     public ServerController(Socket clientSocket) throws IOException {
         this.clientSocket = clientSocket;
         this.out = new ObjectOutputStream(clientSocket.getOutputStream()); // Out trước
@@ -21,21 +25,27 @@ public abstract class ServerController {
     public final void handleClient(String ip) // chỗ này em chỉnh truyền Ip của client vào để xác minh thiết bị
     {
         try {
-            Request request = receiveRequest();
-            if (request == null)
-                return; // client đóng trước khi gửi gì -> thoát êm
+            while (true) { // loop để xử lý nhiều request
+                Request request = receiveRequest();
+                if (request == null) {
+                    break; // client đóng kết nối
+                }
+                System.out.printf("Xu ly requestttttt: %s - %s\n",
+                        request.getModule(), request.getMaLenh());
+                request.setIp(ip);
+                Response response = process(request);
+                sendResponse(response);
+                out.flush();
 
-            System.out.printf("Xu ly request: %s - %s\n",
-                    request.getModunle(), request.getMaLenh());
-            request.setIp(ip);
-            Response response = process(request);
-            sendResponse(response); // gửi đúng 1 lần
-            out.flush();
+                // Nếu là lệnh LOGOUT, thoát loop
+                if ("LOGOUT".equals(request.getMaLenh())) {
+                    break;
+                }
+            }
         } catch (java.io.EOFException | java.net.SocketException closed) {
-            // client đóng kết nối trong/ sau khi nhận response -> coi như bình thường
+            // client đóng kết nối
         } catch (Exception e) {
             System.err.println("Loi xu ly client: " + e.getMessage());
-            // Không cố gửi error response vì socket có thể đã đóng
         } finally {
             closeConnection();
         }
@@ -61,10 +71,12 @@ public abstract class ServerController {
     }
 
     protected Response createSuccessResponse(String module, String command, String data) {
+        System.out.println(new Response(module, command, data, true));
         return new Response(module, command, data, true);
     }
 
     protected Response createErrorResponse(String module, String command, String errorMessage) {
+        System.out.println(new Response(module, command, errorMessage, false));
         return new Response(module, command, errorMessage, false);
     }
 

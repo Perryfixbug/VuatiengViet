@@ -5,8 +5,11 @@ import com.google.gson.GsonBuilder;
 import redis.clients.jedis.Jedis;
 import vuatiengvietpj.model.User;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class SessionManager {
     private static final String KEY_PREFIX = "user:session:";
@@ -108,8 +111,26 @@ public class SessionManager {
             evt.put("ip", ip);
             evt.put("logoutAtMs", System.currentTimeMillis());
             jedis.publish(CH_EVENTS, GSON.toJson(evt));
-
             return del > 0;
         }
+    }
+
+    public static List<User> getOnlineUsers() {
+        List<User> users = new ArrayList<>();
+        try (Jedis jedis = RedisManager.getResource()) {
+            if (jedis == null)
+                return users;
+            Set<String> keys = jedis.keys(KEY_PREFIX + "*");
+            for (String key : keys) {
+                String json = jedis.hget(key, "user");
+                if (json != null && !json.isEmpty()) {
+                    User u = GSON.fromJson(json, User.class);
+                    if (u != null) {
+                        users.add(u);
+                    }
+                }
+            }
+        }
+        return users;
     }
 }
