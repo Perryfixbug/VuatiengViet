@@ -1,6 +1,4 @@
-package vuatiengvietpj.dao;
-
-import vuatiengvietpj.model.User;
+package vuatiengvietpj.DAO;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,15 +8,20 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import vuatiengvietpj.model.User;
+
 public class UserDAO extends DAO {
     // create user trong db
     public boolean createUser(User user) {
         String sql = "INSERT INTO user (fullName, email, password, createAt, updateAt, totalScore) VALUES (?, ?, ?, ?, ?, ?)";
         try {
             getDBconnection();
+            if (con == null) {
+                System.err.println("Error creating user: Database connection is null");
+                return false;
+            }
             PreparedStatement stmt = con.prepareStatement(sql);
             Instant now = Instant.now();
-            stmt.setNull(1, java.sql.Types.BIGINT);
             stmt.setString(1, user.getFullName());
             stmt.setString(2, user.getEmail());
             stmt.setString(3, user.getPassword());
@@ -31,6 +34,7 @@ public class UserDAO extends DAO {
             return result > 0;
         } catch (SQLException e) {
             System.err.println("Error creating user: " + e.getMessage());
+            e.printStackTrace();
             return false;
         } finally {
             closeConnection();
@@ -42,6 +46,10 @@ public class UserDAO extends DAO {
 
         try {
             getDBconnection();
+            if (con == null) {
+                System.err.println("Error changing password: Database connection is null");
+                return false;
+            }
             PreparedStatement stmt = con.prepareStatement(sql);
             stmt.setString(1, newPassword);
             stmt.setTimestamp(2, Timestamp.from(Instant.now()));
@@ -65,6 +73,10 @@ public class UserDAO extends DAO {
 
         try {
             getDBconnection();
+            if (con == null) {
+                System.err.println("Error updating score: Database connection is null");
+                return false;
+            }
             PreparedStatement stmt = con.prepareStatement(sql);
 
             stmt.setLong(1, newScore);
@@ -89,6 +101,10 @@ public class UserDAO extends DAO {
 
         try {
             getDBconnection();
+            if (con == null) {
+                System.err.println("Error finding user by ID: Database connection is null");
+                return null;
+            }
             PreparedStatement stmt = con.prepareStatement(sql);
             stmt.setLong(1, id);
 
@@ -118,6 +134,10 @@ public class UserDAO extends DAO {
 
         try {
             getDBconnection();
+            if (con == null) {
+                System.err.println("Error finding user by email: Database connection is null");
+                return null;
+            }
             PreparedStatement stmt = con.prepareStatement(sql);
             stmt.setString(1, email);
 
@@ -135,6 +155,7 @@ public class UserDAO extends DAO {
 
         } catch (SQLException e) {
             System.err.println("Error finding user by email: " + e.getMessage());
+            e.printStackTrace();
         } finally {
             closeConnection();
         }
@@ -148,6 +169,10 @@ public class UserDAO extends DAO {
 
         try {
             getDBconnection();
+            if (con == null) {
+                System.err.println("Error getting users: Database connection is null");
+                return users;
+            }
             PreparedStatement stmt = con.prepareStatement(sql);
             stmt.setInt(1, limit);
             stmt.setInt(2, offset);
@@ -175,6 +200,10 @@ public class UserDAO extends DAO {
 
         try {
             getDBconnection();
+            if (con == null) {
+                System.err.println("Error checking email exists: Database connection is null");
+                return false;
+            }
             PreparedStatement stmt = con.prepareStatement(sql);
             stmt.setString(1, email);
 
@@ -192,6 +221,7 @@ public class UserDAO extends DAO {
 
         } catch (SQLException e) {
             System.err.println("Error checking email exists: " + e.getMessage());
+            e.printStackTrace();
         } finally {
             closeConnection();
         }
