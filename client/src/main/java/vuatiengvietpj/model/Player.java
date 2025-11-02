@@ -3,6 +3,7 @@ package vuatiengvietpj.model;
 public class Player {
 	private Long userId;
 	private String name;
+	private int score;
 
 	public Player() {
 	}
@@ -10,6 +11,7 @@ public class Player {
 	public Player(Long userId, String name) {
 		this.userId = userId;
 		this.name = name;
+		this.score = 0;
 	}
 
 	public Long getUserId() {
@@ -28,9 +30,17 @@ public class Player {
 		this.name = name;
 	}
 
+	public int getScore() {
+		return score;
+	}
+
+	public void setScore(int score) {
+		this.score = score;
+	}
+
 	@Override
 	public String toString() {
-		return "Player{" + "userId=" + userId + ", name='" + name + '\'' + '}';
+		return "Player{" + "userId=" + userId + ", name='" + name + '\'' + ", score=" + score + '}';
 	}
 
 }

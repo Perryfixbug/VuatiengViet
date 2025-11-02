@@ -11,6 +11,7 @@ public class Room {
     private int maxPlayer;
     private List<Player> players = new ArrayList<>();
     private Instant createAt;
+    private ChallengePack cp; // Challenge pack được gán cho room
     private String status;
 
     public Room() {
@@ -81,9 +82,17 @@ public class Room {
         this.ownerName = ownerName;
     }
 
+    public ChallengePack getCp() {
+        return cp;
+    }
+
+    public void setCp(ChallengePack cp) {
+        this.cp = cp;
+    }
+
     @Override
     public String toString() {
         return "Room [id=" + id + ", ownerId=" + ownerId + ", ownerName=" + ownerName + ", maxPlayer=" + maxPlayer + ", players=" + players
-                + ", createAt=" + createAt + ", status=" + status + "]";
+                + ", createAt=" + createAt + ", cp=" + cp + ", status=" + status + "]";
     }
 }
