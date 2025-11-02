@@ -33,8 +33,10 @@ public class SessionManager {
         data.put("loginAtMs", String.valueOf(System.currentTimeMillis()));
         data.put("ip", ip);
         try (Jedis jedis = RedisManager.getResource()) {
-            if (jedis == null)
+            if (jedis == null) {
+                System.err.println("SessionManager: Redis is not available, session will not be stored");
                 return false;
+            }
             jedis.hset(key(user.getId()), data);
             jedis.expire(key(user.getId()), SESSION_TTL);
 
@@ -47,6 +49,9 @@ public class SessionManager {
             evt.put("ip", ip);
             jedis.publish(CH_EVENTS, GSON.toJson(evt));
             return true;
+        } catch (Exception e) {
+            System.err.println("SessionManager.createOrUpdate error: " + e.getMessage());
+            return false;
         }
 
     }
@@ -57,6 +62,9 @@ public class SessionManager {
                 return null;
             String json = jedis.hget(key(userId), "user");
             return (json == null || json.isEmpty()) ? null : GSON.fromJson(json, User.class);
+        } catch (Exception e) {
+            System.err.println("SessionManager.getUser error: " + e.getMessage());
+            return null;
         }
     }
 
@@ -66,24 +74,33 @@ public class SessionManager {
                 return null;
             String v = jedis.hget(key(userId), "loginAtMs");
             return (v == null) ? null : Long.parseLong(v);
+        } catch (Exception e) {
+            System.err.println("SessionManager.getLoginAtMs error: " + e.getMessage());
+            return null;
         }
     }
 
     public static boolean checkNewIpAddressforSession(long userId, String newIp) {
-        Jedis jedis = RedisManager.getResource();
-        if (jedis == null)
+        try (Jedis jedis = RedisManager.getResource()) {
+            if (jedis == null)
+                return false;
+            String oldIp = jedis.hget(key(userId), "ip");
+            if (oldIp == null || !oldIp.equals(newIp)) {
+                return true;
+            }
             return false;
-        String oldIp = jedis.hget(key(userId), newIp);
-        if (!oldIp.equals(newIp)) {
-            return true;
+        } catch (Exception e) {
+            System.err.println("SessionManager.checkNewIpAddressforSession error: " + e.getMessage());
+            return false;
         }
-        return false;
-
     }
 
     public static boolean isLoggedIn(long userId) {
         try (Jedis jedis = RedisManager.getResource()) {
             return jedis != null && jedis.exists(key(userId));
+        } catch (Exception e) {
+            System.err.println("SessionManager.isLoggedIn error: " + e.getMessage());
+            return false;
         }
     }
 
@@ -112,6 +129,9 @@ public class SessionManager {
             evt.put("logoutAtMs", System.currentTimeMillis());
             jedis.publish(CH_EVENTS, GSON.toJson(evt));
             return del > 0;
+        } catch (Exception e) {
+            System.err.println("SessionManager.destroy error: " + e.getMessage());
+            return false;
         }
     }
 
@@ -130,6 +150,8 @@ public class SessionManager {
                     }
                 }
             }
+        } catch (Exception e) {
+            System.err.println("SessionManager.getOnlineUsers error: " + e.getMessage());
         }
         return users;
     }

@@ -53,7 +53,18 @@ public class ServerApp {
                         return createErrorResponse(module, request.getMaLenh(), "Lỗi server: " + e.getMessage());
                     }
                 case "GAME":
-                    // ...existing code...
+                    try {
+                        System.out.println("Creating GameController");
+                        GameController gc = new GameController(clientSocket);
+                        System.out.println("GameController created, calling process");
+                        Response resp = gc.process(request);
+                        System.out.println("GameController process done: " + resp);
+                        return resp;
+                    } catch (Exception e) {
+                        System.err.println("Error in GameController: " + e.getMessage());
+                        e.printStackTrace();
+                        return createErrorResponse(module, request.getMaLenh(), "Lỗi server: " + e.getMessage());
+                    }
                 case "DICT":
                     // ...existing code...
                 default:

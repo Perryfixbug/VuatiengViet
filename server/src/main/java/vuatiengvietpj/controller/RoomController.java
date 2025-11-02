@@ -1,16 +1,22 @@
 package vuatiengvietpj.controller;
 
-import java.util.*;
-import java.time.*;
 import java.io.IOException;
 import java.net.Socket;
-import com.google.gson.*;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
-import vuatiengvietpj.dao.RoomDAO;
-import vuatiengvietpj.model.Room;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializer;
+
+import vuatiengvietpj.DAO.RoomDAO;
+import vuatiengvietpj.model.Player;
 import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
-import vuatiengvietpj.model.Player;
+import vuatiengvietpj.model.Room;
 
 public class RoomController extends ServerController {
     private RoomDAO roomDAO;
@@ -210,7 +216,8 @@ public class RoomController extends ServerController {
         Room room = roomDAO.getRoomById(roomId);
         if (room == null)
             return null;
-        String status = isPlaying ? "pending" : "playing";
+        // Sửa logic: isPlaying = true → status = "playing", isPlaying = false → status = "pending"
+        String status = isPlaying ? "playing" : "pending";
         roomDAO.updateRoom(roomId, null, status, null);
         room.setStatus(status);
         return room;
