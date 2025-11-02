@@ -1,8 +1,14 @@
 package vuatiengvietpj.controller;
 
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
 import java.util.Arrays;
 
+import com.google.gson.Gson;
+
 import javafx.collections.FXCollections;
+import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -34,15 +40,29 @@ public class PendingRoomController {
 
     @FXML
     public TableView<Player> tblPlayerList;
+    
     // state
     private Room currentRoom;
     private Long currentUserId;
+    
     // suppress selection events when we programmatically set ChoiceBox value
     private boolean suppressSelectionEvents = false;
-    // polling executor to refresh room state periodically
-    private java.util.concurrent.ScheduledExecutorService poller;
+    
+    // LISTENER fields (thay thế polling)
+    private Thread listenerThread;
+    private Socket listenerSocket;
+    private ObjectInputStream listenerIn;
+    private ObjectOutputStream listenerOut;
+    private volatile boolean listening = false;
+    private Gson gson = new com.google.gson.GsonBuilder()
+        .registerTypeAdapter(java.time.Instant.class, 
+            (com.google.gson.JsonDeserializer<java.time.Instant>) (json, type, ctx) -> 
+                java.time.Instant.parse(json.getAsString()))
+        .create();
+    
     // optional callback to notify parent/list controller to refresh room list
     private Runnable onRoomUpdated;
+    
     // flag để phân biệt tự out hay bị kick
     private boolean isManualExit = false;
 
@@ -81,17 +101,14 @@ public class PendingRoomController {
             // ADD LISTENER CHỈ MỘT LẦN - sau khi đã set room và currentUserId
             addChoiceBoxListenerOnce();
             
-            // Refresh ngay lần đầu để load tên người chơi (đồng bộ)
-            loadRoomDataFromServer();
+            // THAY POLLING bằng LISTENING
+            startListening();
             
-            // Bắt đầu polling để cập nhật trạng thái phòng
-            startPolling();
-            
-            // Stop polling khi đóng cửa sổ
+            // Stop listening khi đóng cửa sổ
             try {
                 javafx.stage.Window w = btnOutRoom.getScene().getWindow();
                 if (w instanceof javafx.stage.Stage) {
-                    ((javafx.stage.Stage) w).setOnHidden(evt -> stopPolling());
+                    ((javafx.stage.Stage) w).setOnHidden(evt -> stopListening());
                 }
             } catch (Exception ignored) {}
         }
@@ -183,6 +200,135 @@ public class PendingRoomController {
         btnStart.setDisable(!isOwner);
     }
 
+    // ========== LISTENER METHODS (thay thế polling) ==========
+    
+    /**
+     * Bắt đầu lắng nghe updates từ server qua persistent connection
+     */
+    private void startListening() {
+        if (currentRoom == null || currentUserId == null) {
+            System.err.println("⚠️ Cannot start listening: room or userId is null");
+            return;
+        }
+        if (listening) {
+            System.out.println("⚠️ Already listening");
+            return;
+        }
+        
+        listening = true;
+        listenerThread = new Thread(() -> {
+            try {
+                System.out.println("🎧 Starting listener for room " + currentRoom.getId());
+                
+                // Tạo persistent connection
+                listenerSocket = new Socket("localhost", 2208);
+                listenerOut = new ObjectOutputStream(listenerSocket.getOutputStream());
+                listenerIn = new ObjectInputStream(listenerSocket.getInputStream());
+                
+                // Gửi LISTEN request
+                Request req = new Request("ROOM", "LISTEN", 
+                    currentRoom.getId() + "," + currentUserId);
+                listenerOut.writeObject(req);
+                listenerOut.flush();
+                
+                System.out.println("✅ Listener started for room " + currentRoom.getId());
+                
+                // Loop đọc updates từ server
+                while (listening && !listenerSocket.isClosed()) {
+                    try {
+                        Response response = (Response) listenerIn.readObject();
+                        handleServerUpdate(response);
+                    } catch (Exception e) {
+                        if (listening) {
+                            System.err.println("❌ Listener read error: " + e.getMessage());
+                        }
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("❌ Failed to start listener: " + e.getMessage());
+                e.printStackTrace();
+            } finally {
+                System.out.println("🔌 Listener thread ending");
+            }
+        }, "RoomListener-" + currentRoom.getId());
+        
+        listenerThread.setDaemon(true);
+        listenerThread.start();
+    }
+    
+    /**
+     * Xử lý updates nhận được từ server
+     */
+    private void handleServerUpdate(Response response) {
+        System.out.println("📥 Received: " + response.getMaLenh());
+        
+        if ("UPDATE".equals(response.getMaLenh())) {
+            // Room được cập nhật
+            try {
+                Room updatedRoom = gson.fromJson(response.getData(), Room.class);
+                
+                // Kiểm tra nếu game bắt đầu
+                if ("playing".equals(updatedRoom.getStatus()) && 
+                    !"playing".equals(currentRoom.getStatus())) {
+                    System.out.println("🎮 Game started! Navigating to PlayingRoom...");
+                    javafx.application.Platform.runLater(() -> {
+                        stopListening();
+                        navigateToPlayingRoom(updatedRoom);
+                    });
+                    return;
+                }
+                
+                // Cập nhật UI trên JavaFX thread
+                javafx.application.Platform.runLater(() -> updateRoomData(updatedRoom));
+                
+            } catch (Exception e) {
+                System.err.println("❌ Error parsing room update: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
+        } else if ("KICKED".equals(response.getMaLenh())) {
+            // Bị kick khỏi phòng
+            System.out.println("👢 You were kicked from the room!");
+            javafx.application.Platform.runLater(() -> {
+                stopListening();
+                showInfo("Bị Kick", "Bạn đã bị kick khỏi phòng #" + currentRoom.getId());
+                closeWindow();
+            });
+        }
+    }
+    
+    /**
+     * Dừng listener
+     */
+    private void stopListening() {
+        listening = false;
+        try {
+            if (listenerIn != null) listenerIn.close();
+            if (listenerOut != null) listenerOut.close();
+            if (listenerSocket != null) listenerSocket.close();
+            if (listenerThread != null) listenerThread.interrupt();
+        } catch (Exception e) {
+            System.err.println("Error stopping listener: " + e.getMessage());
+        }
+        System.out.println("❌ Listener stopped");
+    }
+    
+    /**
+     * Đóng cửa sổ
+     */
+    private void closeWindow() {
+        try {
+            if (onRoomUpdated != null) onRoomUpdated.run();
+        } catch (Exception ignored) {}
+        try {
+            javafx.stage.Window w = btnOutRoom.getScene().getWindow();
+            if (w instanceof javafx.stage.Stage) ((javafx.stage.Stage) w).close();
+        } catch (Exception ignored) {}
+    }
+
+    // ========== END LISTENER METHODS ==========
+
     // Load dữ liệu phòng từ server ngay lập tức (đồng bộ)
     private void loadRoomDataFromServer() {
         if (currentRoom == null) return;
@@ -200,111 +346,20 @@ public class PendingRoomController {
         }
     }
 
-    private void startPolling() {
-        stopPolling();
-        // create a daemon thread so the JVM can exit if only the poller remains
-        poller = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r);
-            t.setDaemon(true);
-            t.setName("PendingRoom-poller-" + (currentRoom == null ? "unknown" : currentRoom.getId()));
-            return t;
-        });
-        System.out.println("PendingRoomController.startPolling: started poller for room=" + (currentRoom == null ? "null" : currentRoom.getId()));
-        poller.scheduleAtFixedRate(() -> {
-            refreshRoomData();
-        }, 2, 2, java.util.concurrent.TimeUnit.SECONDS); // Start after 2s delay, not immediately
-    }
+    // ========== OLD POLLING METHODS - XÓA ==========
+    // (Đã được thay thế bằng listener methods ở trên)
 
-    // Refresh dữ liệu phòng từ server
-    private void refreshRoomData() {
-        try {
-            if (currentRoom == null) return;
-            Room latest;
-            try (RoomController rc = new RoomController("localhost", 2208)) {
-                latest = rc.getRoomById(currentRoom.getId());
-            } catch (Exception e) {
-                System.err.println("PendingRoomController.refreshRoomData - Lỗi kết nối: " + e.getMessage());
-                return; // Skip this poll cycle
-            }
-            
-            if (latest == null) {
-                // Phòng không tồn tại - chỉ đóng cửa sổ, KHÔNG hiển thị thông báo
-                javafx.application.Platform.runLater(() -> {
-                    try {
-                        stopPolling();
-                        if (onRoomUpdated != null) onRoomUpdated.run();
-                    } catch (Exception ignored) {}
-                    try {
-                        javafx.stage.Window w = btnOutRoom.getScene().getWindow();
-                        if (w instanceof javafx.stage.Stage) ((javafx.stage.Stage) w).close();
-                    } catch (Exception ignored) {}
-                });
-                return;
-            }
-            
-            // Kiểm tra status - nếu chuyển sang "playing", tự động chuyển sang PlayingRoom
-            if ("playing".equals(latest.getStatus()) && !"playing".equals(currentRoom.getStatus())) {
-                // Game đã bắt đầu - chuyển sang PlayingRoom
-                Room finalLatest = latest;
-                javafx.application.Platform.runLater(() -> {
-                    stopPolling();
-                    navigateToPlayingRoom(finalLatest);
-                });
-                return;
-            }
-            
-            // Kiểm tra xem user hiện tại có còn trong phòng không (bị kick?)
-            if (!isManualExit && currentUserId != null && latest.getPlayers() != null) {
-                boolean stillInRoom = latest.getPlayers().stream()
-                    .anyMatch(p -> p.getUserId().equals(currentUserId));
-                
-                if (!stillInRoom) {
-                    // User đã bị kick khỏi phòng
-                    javafx.application.Platform.runLater(() -> {
-                        stopPolling();
-                        showInfo("Bị Kick", "Bạn đã bị kick khỏi phòng #" + currentRoom.getId());
-                        try {
-                            if (onRoomUpdated != null) onRoomUpdated.run();
-                        } catch (Exception ignored) {}
-                        try {
-                            javafx.stage.Window w = btnOutRoom.getScene().getWindow();
-                            if (w instanceof javafx.stage.Stage) ((javafx.stage.Stage) w).close();
-                        } catch (Exception ignored) {}
-                    });
-                    return;
-                }
-            }
-            
-            // if players changed or owner changed or status changed, update UI
-                boolean changed = false;
-                if (latest.getPlayers() == null && currentRoom.getPlayers() != null) changed = true;
-                else if (latest.getPlayers() != null && currentRoom.getPlayers() == null) changed = true;
-                else if (latest.getPlayers() != null && currentRoom.getPlayers() != null && latest.getPlayers().size() != currentRoom.getPlayers().size()) changed = true;
-                else if (!java.util.Objects.equals(latest.getOwnerId(), currentRoom.getOwnerId())) changed = true;
-                else if (!java.util.Objects.equals(latest.getStatus(), currentRoom.getStatus())) changed = true;
-                else if (!java.util.Objects.equals(latest.getMaxPlayer(), currentRoom.getMaxPlayer())) changed = true;
-                
-            if (changed) {
-                Room finalLatest = latest;
-                javafx.application.Platform.runLater(() -> {
-                    // Update room data WITHOUT triggering setRoom (to avoid re-starting poller)
-                    updateRoomData(finalLatest);
-                });
-            }
-        } catch (Exception e) {
-            System.err.println("PendingRoomController.refreshRoomData error: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    // Cập nhật dữ liệu phòng mà KHÔNG restart poller (dùng cho polling update)
+    // ========== END OLD POLLING METHODS ==========
+    
+    /**
+     * Cập nhật dữ liệu phòng (được gọi khi nhận update từ server)
+     */
     private void updateRoomData(Room room) {
         if (room == null) return;
         
         this.currentRoom = room;
-        System.out.println("PendingRoomController.updateRoomData: roomId=" + room.getId() + 
-                         ", ownerId=" + room.getOwnerId() + 
-                         ", currentUserId=" + currentUserId + 
+        System.out.println("🔄 PendingRoomController.updateRoomData: roomId=" + room.getId() + 
+                         ", players=" + (room.getPlayers() != null ? room.getPlayers().size() : 0) + 
                          ", max=" + room.getMaxPlayer());
         
         // Cập nhật thông tin phòng
@@ -321,18 +376,6 @@ public class PendingRoomController {
         suppressSelectionEvents = true;
         cbxNumberPlayer.setValue(room.getMaxPlayer());
         suppressSelectionEvents = false;
-    }
-
-    private void stopPolling() {
-        try {
-            if (poller != null && !poller.isShutdown()) poller.shutdownNow();
-        } catch (Exception ignored) {}
-        poller = null;
-    }
-
-    // expose a safe stop for external callers (e.g., parent stage onHidden)
-    public void stopPollingPublic() {
-        stopPolling();
     }
 
     @FXML
@@ -500,8 +543,8 @@ public class PendingRoomController {
                 showError("Rời phòng", "Lỗi khi rời phòng: " + errorMsg);
             }
             
-            // Dừng polling
-            stopPolling();
+            // Dừng listener
+            stopListening();
             
             // Đóng cửa sổ pending room và quay về danh sách phòng
             try {
@@ -579,7 +622,7 @@ public class PendingRoomController {
      */
     private void navigateToPlayingRoom(Room room) {
         try {
-            stopPolling();
+            stopListening();
             
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/vuatiengvietpj/PlayingRoom.fxml"));
             javafx.scene.Parent root = loader.load();

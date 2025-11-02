@@ -1,6 +1,9 @@
 package vuatiengvietpj.controller;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,6 +33,7 @@ import javafx.stage.Stage;
 import vuatiengvietpj.model.Room;
 import vuatiengvietpj.model.Player;
 import vuatiengvietpj.model.ChallengePack;
+import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 
@@ -100,8 +104,12 @@ public class PlayingRoomController {
     // Game controller connection
     private GameController gameController;
     
-    // Polling executor
-    private java.util.concurrent.ScheduledExecutorService poller;
+    // LISTENER fields (thay thế polling)
+    private volatile boolean listening = false;
+    private Socket listenerSocket;
+    private ObjectOutputStream listenerOut;
+    private ObjectInputStream listenerIn;
+    private Thread listenerThread;
     
     // Timer executor
     private java.util.concurrent.ScheduledExecutorService timerExecutor;
@@ -373,18 +381,112 @@ public class PlayingRoomController {
     // Thay vào đó, sử dụng polling để refresh scoreboard thông qua refreshRoomData()
     // Nếu cần broadcast real-time, cần refactor để dùng separate connection hoặc message queue
 
-    private void startPolling() {
-        stopPolling();
-        poller = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r);
-            t.setDaemon(true);
-            t.setName("PlayingRoom-poller-" + (currentRoom == null ? "unknown" : currentRoom.getId()));
-            return t;
-        });
+    // ========== LISTENER METHODS (thay thế polling) ==========
+    
+    private void startListening() {
+        stopListening();
+        listening = true;
         
-        poller.scheduleAtFixedRate(() -> {
-            refreshRoomData();
-        }, 2, 2, java.util.concurrent.TimeUnit.SECONDS);
+        listenerThread = new Thread(() -> {
+            try {
+                System.out.println("🎧 [PlayingRoom] Starting listener for room " + currentRoom.getId());
+                
+                listenerSocket = new Socket("localhost", 2208);
+                listenerOut = new ObjectOutputStream(listenerSocket.getOutputStream());
+                listenerIn = new ObjectInputStream(listenerSocket.getInputStream());
+                
+                Request req = new Request("ROOM", "LISTEN", 
+                    currentRoom.getId() + "," + currentUserId);
+                listenerOut.writeObject(req);
+                listenerOut.flush();
+                
+                System.out.println("✅ [PlayingRoom] Listener started for room " + currentRoom.getId());
+                
+                while (listening && !listenerSocket.isClosed()) {
+                    try {
+                        Response response = (Response) listenerIn.readObject();
+                        handleServerUpdate(response);
+                    } catch (Exception e) {
+                        if (listening) {
+                            System.err.println("❌ [PlayingRoom] Listener read error: " + e.getMessage());
+                        }
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("❌ [PlayingRoom] Failed to start listener: " + e.getMessage());
+            } finally {
+                System.out.println("🔌 [PlayingRoom] Listener thread ending");
+            }
+        }, "PlayingRoomListener-" + currentRoom.getId());
+        
+        listenerThread.setDaemon(true);
+        listenerThread.start();
+    }
+    
+    private void handleServerUpdate(Response response) {
+        System.out.println("📥 [PlayingRoom] Received: " + response.getMaLenh());
+        
+        if ("UPDATE".equals(response.getMaLenh())) {
+            try {
+                Room updatedRoom = new com.google.gson.Gson().fromJson(response.getData(), Room.class);
+                
+                // Kiểm tra nếu status thay đổi
+                if (!"playing".equals(updatedRoom.getStatus()) && 
+                    "playing".equals(currentRoom.getStatus())) {
+                    // Game kết thúc, quay về pending room
+                    Platform.runLater(() -> {
+                        stopListening();
+                        navigateToPendingRoom();
+                    });
+                    return;
+                }
+                
+                // Cập nhật room data
+                Platform.runLater(() -> {
+                    updateRoomData(updatedRoom);
+                });
+                
+            } catch (Exception e) {
+                System.err.println("❌ [PlayingRoom] Error parsing update: " + e.getMessage());
+            }
+        } else if ("KICKED".equals(response.getMaLenh())) {
+            Platform.runLater(() -> {
+                stopListening();
+                showInfo("Bị Kick", "Bạn đã bị kick khỏi phòng");
+                navigateToRoomList();
+            });
+        }
+    }
+    
+    private void stopListening() {
+        listening = false;
+        try {
+            if (listenerIn != null) listenerIn.close();
+            if (listenerOut != null) listenerOut.close();
+            if (listenerSocket != null) listenerSocket.close();
+            if (listenerThread != null) listenerThread.interrupt();
+        } catch (Exception e) {
+            System.err.println("[PlayingRoom] Error stopping listener: " + e.getMessage());
+        }
+        System.out.println("❌ [PlayingRoom] Listener stopped");
+    }
+    
+    private void updateRoomData(Room room) {
+        this.currentRoom = room;
+        System.out.println("🔄 [PlayingRoom] Room updated: " + room.getId());
+        
+        // Cập nhật scoreboard nếu cần
+        if (room.getPlayers() != null) {
+            scoreboardData.setAll(room.getPlayers());
+        }
+    }
+    
+    // ========== END LISTENER METHODS ==========
+
+    private void startPolling() {
+        // DEPRECATED: Replaced by startListening()
+        startListening();
     }
 
     private void refreshRoomData() {
@@ -437,7 +539,7 @@ public class PlayingRoomController {
             // Update UI if room data changed
             boolean changed = false;
             if (latest.getCp() != null && currentRoom.getCp() != null) {
-                if (!latest.getCp().getId().equals(currentRoom.getCp().getId())) {
+                if (!(latest.getCp().getId() != currentRoom.getCp().getId())) {
                     changed = true;
                 }
             } else if (latest.getCp() != null || currentRoom.getCp() != null) {
@@ -463,13 +565,8 @@ public class PlayingRoomController {
     }
 
     private void stopPolling() {
-        try {
-            if (poller != null && !poller.isShutdown()) {
-                poller.shutdownNow();
-            }
-        } catch (Exception ignored) {}
-        poller = null;
-        // Note: Don't close GameController here - it's still needed for game operations
+        // DEPRECATED: Replaced by stopListening()
+        stopListening();
     }
     
     /**
