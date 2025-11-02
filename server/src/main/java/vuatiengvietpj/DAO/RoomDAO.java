@@ -1,8 +1,17 @@
-package vuatiengvietpj.dao;
+package vuatiengvietpj.DAO;
 
-import vuatiengvietpj.model.*;
-import java.sql.*;
-import java.util.*;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import vuatiengvietpj.model.ChallengePack;
+import vuatiengvietpj.model.Player;
+import vuatiengvietpj.model.Room;
 
 public class RoomDAO extends DAO {
     public RoomDAO() {
@@ -233,6 +242,39 @@ public class RoomDAO extends DAO {
             insertPs.setLong(1, userId);
             insertPs.setLong(2, roomId);
             insertPs.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    // Cập nhật điểm của player trong room
+    public void updatePlayerScore(Long roomId, Long userId, int newScore) {
+        // Lấy score hiện tại và cộng thêm
+        String selectSql = "SELECT score FROM player WHERE userId = ? AND roomId = ?";
+        String updateSql = "UPDATE player SET score = ? WHERE userId = ? AND roomId = ?";
+        
+        try (PreparedStatement selectPs = con.prepareStatement(selectSql)) {
+            selectPs.setLong(1, userId);
+            selectPs.setLong(2, roomId);
+            try (ResultSet rs = selectPs.executeQuery()) {
+                int currentScore = 0;
+                if (rs.next()) {
+                    currentScore = rs.getInt("score");
+                }
+                
+                // Tính điểm mới (cộng thêm điểm mới vào điểm hiện tại)
+                int updatedScore = currentScore + newScore;
+                
+                // Cập nhật điểm
+                try (PreparedStatement updatePs = con.prepareStatement(updateSql)) {
+                    updatePs.setInt(1, updatedScore);
+                    updatePs.setLong(2, userId);
+                    updatePs.setLong(3, roomId);
+                    updatePs.executeUpdate();
+                    System.out.println("RoomDAO.updatePlayerScore: userId=" + userId + ", roomId=" + roomId + 
+                                     ", oldScore=" + currentScore + ", addedScore=" + newScore + ", newScore=" + updatedScore);
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
