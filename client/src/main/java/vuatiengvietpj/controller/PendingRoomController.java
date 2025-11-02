@@ -242,6 +242,17 @@ public class PendingRoomController {
                 return;
             }
             
+            // Kiểm tra status - nếu chuyển sang "playing", tự động chuyển sang PlayingRoom
+            if ("playing".equals(latest.getStatus()) && !"playing".equals(currentRoom.getStatus())) {
+                // Game đã bắt đầu - chuyển sang PlayingRoom
+                Room finalLatest = latest;
+                javafx.application.Platform.runLater(() -> {
+                    stopPolling();
+                    navigateToPlayingRoom(finalLatest);
+                });
+                return;
+            }
+            
             // Kiểm tra xem user hiện tại có còn trong phòng không (bị kick?)
             if (!isManualExit && currentUserId != null && latest.getPlayers() != null) {
                 boolean stillInRoom = latest.getPlayers().stream()
@@ -533,8 +544,95 @@ public class PendingRoomController {
             return;
         }
         
-        // TODO: Implement logic bắt đầu game
-        showInfo("Bắt đầu", "Tính năng bắt đầu game sẽ được implement sau.");
+        // Gọi API START game
+        try (vuatiengvietpj.controller.GameController gc = new vuatiengvietpj.controller.GameController("localhost", 2208)) {
+            Response response = gc.startGame(currentRoom.getId(), currentUserId);
+            
+            if (response != null && response.isSuccess()) {
+                // Parse Room object từ response
+                Room startedRoom = gc.parseRoom(response.getData());
+                if (startedRoom != null) {
+                    // Cập nhật room local
+                    updateRoomData(startedRoom);
+                    System.out.println("PendingRoomController - Game đã bắt đầu thành công, ChallengePack: " + 
+                                     (startedRoom.getCp() != null ? startedRoom.getCp().getId() : "null"));
+                    
+                    // Chuyển sang PlayingRoom với countdown
+                    navigateToPlayingRoom(startedRoom);
+                } else {
+                    showError("Bắt đầu game", "Không thể parse dữ liệu từ server");
+                }
+            } else {
+                String errorMsg = (response != null) ? response.getData() : "Không nhận được phản hồi từ server";
+                System.err.println("PendingRoomController - Lỗi khi bắt đầu game: " + errorMsg);
+                showError("Bắt đầu game", "Lỗi: " + errorMsg);
+            }
+        } catch (Exception e) {
+            System.err.println("PendingRoomController - Exception khi bắt đầu game: " + e.getMessage());
+            e.printStackTrace();
+            showError("Bắt đầu game", "Không thể kết nối đến server: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Chuyển sang màn hình PlayingRoom khi game bắt đầu
+     */
+    private void navigateToPlayingRoom(Room room) {
+        try {
+            stopPolling();
+            
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/vuatiengvietpj/PlayingRoom.fxml"));
+            javafx.scene.Parent root = loader.load();
+            javafx.scene.Scene scene = new javafx.scene.Scene(root);
+            
+            Object controller = loader.getController();
+            if (controller instanceof PlayingRoomController) {
+                PlayingRoomController prc = (PlayingRoomController) controller;
+                prc.setCurrentUserId(currentUserId);
+                
+                // Lấy Stage từ scene hiện tại
+                javafx.stage.Stage stage = null;
+                try {
+                    javafx.stage.Window w = btnOutRoom.getScene().getWindow();
+                    if (w instanceof javafx.stage.Stage) {
+                        stage = (javafx.stage.Stage) w;
+                    }
+                } catch (Exception e) {
+                    System.err.println("PendingRoomController - Không thể lấy Stage: " + e.getMessage());
+                }
+                
+                if (stage != null) {
+                    prc.setPrimaryStage(stage);
+                }
+                
+                // Đánh dấu hiển thị countdown khi load
+                prc.setShowCountdownOnLoad(true);
+                
+                // Set room - sẽ trigger countdown
+                prc.setRoom(room);
+            }
+            
+            // Cập nhật scene
+            javafx.stage.Stage stage = null;
+            try {
+                javafx.stage.Window w = btnOutRoom.getScene().getWindow();
+                if (w instanceof javafx.stage.Stage) {
+                    stage = (javafx.stage.Stage) w;
+                }
+            } catch (Exception e) {
+                System.err.println("PendingRoomController - Không thể lấy Stage: " + e.getMessage());
+            }
+            
+            if (stage != null) {
+                stage.setScene(scene);
+                stage.setTitle("Chơi game - Phòng #" + room.getId());
+                stage.show();
+            }
+        } catch (java.io.IOException e) {
+            System.err.println("PendingRoomController.navigateToPlayingRoom - Lỗi: " + e.getMessage());
+            e.printStackTrace();
+            showError("Lỗi", "Không thể mở màn hình chơi game: " + e.getMessage());
+        }
     }
 
     // perform the edit request and update UI only on success
