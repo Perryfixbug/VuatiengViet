@@ -1,21 +1,20 @@
 package vuatiengvietpj.controller;
 
-import java.net.*;
+import java.net.Socket;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
+
+import org.mindrot.jbcrypt.BCrypt;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
-import com.google.gson.reflect.TypeToken;
 
-import org.mindrot.jbcrypt.BCrypt;
-import vuatiengvietpj.dao.UserDAO;
-import vuatiengvietpj.model.User;
+import vuatiengvietpj.DAO.UserDAO;
 import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
+import vuatiengvietpj.model.User;
 import vuatiengvietpj.util.SessionManager;
 
 public class UserController extends ServerController {

@@ -32,13 +32,24 @@ public class RedisManager {
             } else {
                 pool = new JedisPool(config, host, port, timeout);
             }
+            System.out.println("RedisManager: Pool initialized (host=" + host + ", port=" + port + ")");
         } catch (Exception e) {
-            System.err.println("Redis connection failed: " + e.getMessage());
+            System.err.println("Redis connection failed during initialization: " + e.getMessage());
+            System.err.println("⚠️  Redis is not available. Session management will be disabled.");
+            pool = null;
         }
     }
 
     public static Jedis getResource() {
-        return pool != null ? pool.getResource() : null;
+        if (pool == null) {
+            return null;
+        }
+        try {
+            return pool.getResource();
+        } catch (Exception e) {
+            System.err.println("Redis getResource error: " + e.getMessage());
+            return null;
+        }
     }
 
     public static void close() {
