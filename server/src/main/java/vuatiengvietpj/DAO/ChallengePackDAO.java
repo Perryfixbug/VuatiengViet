@@ -1,7 +1,10 @@
-package vuatiengvietpj.dao;
+package vuatiengvietpj.DAO;
 
-import vuatiengvietpj.model.*;
-import java.sql.*;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import vuatiengvietpj.model.ChallengePack;
 
 public class ChallengePackDAO extends DAO {
     public ChallengePackDAO() {
@@ -39,5 +42,35 @@ public class ChallengePackDAO extends DAO {
         return count;
     }
     
+    // Lấy danh sách tất cả challenge pack IDs
+    public java.util.List<Long> getAllChallengePackIds() {
+        java.util.List<Long> ids = new java.util.ArrayList<>();
+        String sql = "SELECT id FROM challengePack";
+        try (PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                ids.add(rs.getLong("id"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return ids;
+    }
     
+    // Lấy danh sách đáp án của challenge pack
+    public java.util.List<String> getAnswersByChallengePackId(Long cpId) {
+        java.util.List<String> answers = new java.util.ArrayList<>();
+        String sql = "SELECT dictionaryWord FROM Answer WHERE challengePackId = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setLong(1, cpId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    answers.add(rs.getString("dictionaryWord"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return answers;
+    }
 }
