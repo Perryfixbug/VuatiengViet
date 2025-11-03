@@ -429,10 +429,12 @@ public class PlayingRoomController {
             }
             
             try {
+                Integer level = (currentRoom != null && currentRoom.getCp() != null) ? currentRoom.getCp().getLevel() : 1;
                 GameController.SubmitResult result = gameController.submitAnswerWithResult(
                     currentRoom.getId(), 
                     currentUserId, 
-                    answer
+                    answer,
+                    level
                 );
                 
                 Platform.runLater(() -> {
@@ -1131,7 +1133,7 @@ public class PlayingRoomController {
         
         // Hiển thị dialog và chờ đóng
         dialog.showAndWait();
-        
+
         // Navigate về PendingRoom SAU KHI dialog đóng
         System.out.println("[PlayingRoom] Dialog closed, navigating to PendingRoom...");
         navigateToPendingRoom();

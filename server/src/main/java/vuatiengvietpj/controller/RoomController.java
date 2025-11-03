@@ -392,6 +392,22 @@ public class RoomController extends ServerController {
         players.add(newPlayer);
         room.setPlayers(players);
         roomDAO.addPlayerToRoom(roomId, userId);
+        // Thêm vào Redis scoreboard với điểm 0 và cập nhật tên nếu có
+        try {
+            redis.clients.jedis.Jedis jedis = vuatiengvietpj.util.RedisManager.getResource();
+            if (jedis != null) {
+                try (jedis) {
+                    String zKey = "scoreboard:" + roomId;
+                    String hKey = "scoreboard:names:" + roomId;
+                    jedis.zadd(zKey, 0.0, "user:" + userId);
+                    // Tên có thể null ở đây; nếu cần, có thể lấy từ DB User
+                    // Để đồng bộ, lưu tạm userId làm name nếu thiếu
+                    jedis.hset(hKey, "user:" + userId, String.valueOf(userId));
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("RoomController.joinRoom: Failed to add user to Redis scoreboard - " + ex.getMessage());
+        }
         System.out.println(
                 "RoomController.joinRoom: SUCCESS - added userId=" + userId + ", now " + players.size() + " players");
         return room;
@@ -434,6 +450,7 @@ public class RoomController extends ServerController {
             roomDAO.deletePlayerFromRoom(roomId, userId);
             System.out.println("RoomController.outRoom: SUCCESS - removed userId=" + userId + ", now " + players.size()
                     + " players");
+            // Giữ nguyên điểm trong Redis (không ZREM). Có thể cập nhật trạng thái nếu cần.
 
             if (players.isEmpty()) {
                 // Xóa phòng khi không còn người chơi (bất kể trạng thái pending hay playing)

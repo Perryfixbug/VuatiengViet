@@ -67,8 +67,8 @@ public class GameController extends ClientController implements AutoCloseable {
         return null;
     }
 
-    // Submit answer và parse kết quả
-    public SubmitResult submitAnswerWithResult(Integer roomId, Integer userId, String answer) {
+    // Submit answer và parse kết quả (client cung cấp level hiện tại của room)
+    public SubmitResult submitAnswerWithResult(Integer roomId, Integer userId, String answer, Integer level) {
         try {
             // Kiểm tra answer không rỗng
             if (answer == null || answer.trim().isEmpty()) {
@@ -92,12 +92,11 @@ public class GameController extends ClientController implements AutoCloseable {
                     return new SubmitResult(false, null, 0, 0, "Nhận được broadcast thay vì response");
                 }
                 
-                // Parse kết quả: "matchedAnswer,frequency,level"
+                // Parse kết quả: "matchedAnswer,frequency"
                 String[] parts = responseData.split(",");
-                if (parts.length >= 3) {
+                if (parts.length >= 2) {
                     String matchedAnswer = parts[0];
                     Integer frequency = Integer.parseInt(parts[1]);
-                    Integer level = Integer.parseInt(parts[2]);
                     
                     // Tính điểm theo công thức: level * 10 * t
                     // frequency < 10: t = 3
@@ -373,6 +372,8 @@ public class GameController extends ClientController implements AutoCloseable {
         }
         return null;
     }
+
+    
 
     @Override
     public void close() {
