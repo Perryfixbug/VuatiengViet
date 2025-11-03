@@ -59,7 +59,7 @@ public class RoomController extends ServerController {
             return createErrorResponse(module, "CREATE", "Du lieu khong hop le");
         }
         try {
-            Long ownerId = Long.parseLong(data);
+            Integer ownerId = Integer .parseInt(data);
             Room room = createRoom(ownerId);
             if (room != null) {
                 return createSuccessResponse(module, "CREATE", gson.toJson(room));
@@ -80,8 +80,8 @@ public class RoomController extends ServerController {
         }
 
         try {
-            Long roomId = Long.parseLong(parts[0]);
-            Long userId = Long.parseLong(parts[1]);
+            Integer roomId = Integer .parseInt(parts[0]);
+            Integer userId = Integer .parseInt(parts[1]);
             Room room = joinRoom(roomId, userId);
             if (room != null) {
                 // Broadcast update tới tất cả listeners trong phòng
@@ -104,7 +104,7 @@ public class RoomController extends ServerController {
             return createErrorResponse(module, "EDIT", "Du lieu khong hop le");
         }
         try {
-            Long roomId = Long.parseLong(parts[0]);
+            Integer roomId = Integer .parseInt (parts[0]);
             int maxPlayer = parts[1].isEmpty() ? 0 : Integer.parseInt(parts[1]);
             Room room = editRoom(roomId, maxPlayer);
             if (room != null) {
@@ -128,8 +128,8 @@ public class RoomController extends ServerController {
             return createErrorResponse(module, "OUT", "Du lieu khong hop le");
         }
         try {
-            Long roomId = Long.parseLong(parts[0]);
-            Long userId = Long.parseLong(parts[1]);
+            Integer roomId = Integer.parseInt(parts[0]);
+            Integer userId = Integer.parseInt(parts[1]);
             Room room = outRoom(roomId, userId);
             
             // Broadcast update nếu phòng còn tồn tại và có người
@@ -160,7 +160,7 @@ public class RoomController extends ServerController {
             return createErrorResponse(module, "GETBYID", "Du lieu khong hop le");
         }
         try {
-            Long roomId = Long.parseLong(data);
+            Integer roomId = Integer .parseInt(data);
             Room room = roomDAO.getRoomById(roomId);
             List<Room> result = new ArrayList<>();
             if (room != null)
@@ -179,7 +179,7 @@ public class RoomController extends ServerController {
             return createErrorResponse(module, "REFRESH", "Du lieu khong hop le");
         }
         try {
-            Long roomId = Long.parseLong(parts[0]);
+            Integer roomId = Integer.parseInt(parts[0]);
             boolean isPlaying = Boolean.parseBoolean(parts[1]);
 
             Room room = roomDAO.getRoomById(roomId);
@@ -200,9 +200,9 @@ public class RoomController extends ServerController {
         if (parts.length < 3) {
             return createErrorResponse(module, "KICK", "Du lieu khong hop le");
         }
-        Long roomId = Long.parseLong(parts[0]);
-        Long userId = Long.parseLong(parts[1]);
-        Long kickedPlayerId = Long.parseLong(parts[2]);
+        Integer roomId = Integer.parseInt(parts[0]);
+        Integer userId = Integer.parseInt(parts[1]);
+        Integer kickedPlayerId = Integer.parseInt(parts[2]);
         Room room = kickPlayer(roomId, userId, kickedPlayerId);
         if (room != null) {
             // Gửi KICKED message tới user bị kick
@@ -226,9 +226,9 @@ public class RoomController extends ServerController {
         }
         
         try {
-            Long roomId = Long.parseLong(parts[0]);
-            Long userId = Long.parseLong(parts[1]);
-            
+            Integer roomId = Integer.parseInt(parts[0]);
+            Integer userId = Integer.parseInt(parts[1]);
+
             System.out.println("RoomController.LISTEN: room=" + roomId + ", user=" + userId);
             
             // SỬA: Sử dụng lại ObjectOutputStream có sẵn từ ServerController
@@ -327,22 +327,22 @@ public class RoomController extends ServerController {
     }
 
     // Các phương thức hỗ trợ
-    private Long generateRoomId() {
+    private Integer generateRoomId() {
         long timstamp = System.currentTimeMillis() + new Random().nextInt(1000);
         int roomId = (int) (timstamp % 100000000);
-        return (long) roomId;
+        return (Integer) roomId;
     }
 
     public List<Room> getAllRooms() {
         return roomDAO.getAllRooms();
     }
 
-    public Room getRoomById(Long roomId) {
+    public Room getRoomById(Integer roomId) {
         return roomDAO.getRoomById(roomId);
     }
 
     // Thay đổi trạng thái phòng
-    public Room changeStatus(Long roomId, boolean isPlaying) {
+    public Room changeStatus(Integer roomId, boolean isPlaying) {
         // Đổi trạng thái hiện tại của phòng qua biến isPlaying
         Room room = roomDAO.getRoomById(roomId);
         if (room == null)
@@ -354,19 +354,19 @@ public class RoomController extends ServerController {
         return room;
     }
 
-    public Room createRoom(Long ownerId) {
+    public Room createRoom(Integer ownerId) {
         List<Player> players = new ArrayList<>();
         Player player = new Player();
         player.setUserId(ownerId);
         players.add(player);
 
-        Long roomId = generateRoomId();
+        Integer roomId = generateRoomId();
         Room room = new Room(roomId, ownerId, 4, Instant.now(), "pending", null, players);
         roomDAO.createRoom(room);
         return room;
     }
 
-    public Room joinRoom(Long roomId, Long userId) {
+    public Room joinRoom(Integer roomId, Integer userId) {
         System.out.println("RoomController.joinRoom: roomId=" + roomId + ", userId=" + userId);
         Room room = roomDAO.getRoomById(roomId);
         if (room == null || userId == null || room.getMaxPlayer() == 0) {
@@ -397,7 +397,7 @@ public class RoomController extends ServerController {
         return room;
     }
 
-    public Room editRoom(Long roomId, Integer maxPlayer) {
+    public Room editRoom(Integer roomId, Integer maxPlayer) {
         Room room = roomDAO.getRoomById(roomId);
         if (room == null)
             return null;
@@ -409,7 +409,7 @@ public class RoomController extends ServerController {
         return room;
     }
 
-    public Room outRoom(Long roomId, Long userId) {
+    public Room outRoom(Integer roomId, Integer userId) {
         System.out.println("RoomController.outRoom: roomId=" + roomId + ", userId=" + userId);
         Room room = roomDAO.getRoomById(roomId);
         if (room == null || userId == null) {
@@ -449,7 +449,7 @@ public class RoomController extends ServerController {
         return room;
     }
 
-    public Room kickPlayer(Long roomId, Long userId, Long kickedPlayerId) {
+    public Room kickPlayer(Integer roomId, Integer userId, Integer kickedPlayerId) {
         if (roomId == null || userId == null || kickedPlayerId == null)
             return null;
         Room room = roomDAO.getRoomById(roomId);

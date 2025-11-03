@@ -20,7 +20,7 @@ public class RoomUpdateManager {
     
     // roomId -> userId -> ObjectOutputStream
     // ConcurrentHashMap để thread-safe
-    private Map<Long, ConcurrentHashMap<Long, ObjectOutputStream>> listeners = new ConcurrentHashMap<>();
+    private Map<Integer, ConcurrentHashMap<Integer, ObjectOutputStream>> listeners = new ConcurrentHashMap<>();
     
     private Gson gson = new GsonBuilder()
         .registerTypeAdapter(Instant.class,
@@ -48,7 +48,7 @@ public class RoomUpdateManager {
      * @param userId ID của user
      * @param out ObjectOutputStream để gửi updates
      */
-    public void addListener(Long roomId, Long userId, ObjectOutputStream out) {
+    public void addListener(Integer roomId, Integer userId, ObjectOutputStream out) {
         listeners.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>()).put(userId, out);
         System.out.println("RoomUpdateManager: Listener added - room=" + roomId + ", user=" + userId + 
                          ", total in room=" + listeners.get(roomId).size());
@@ -57,8 +57,8 @@ public class RoomUpdateManager {
     /**
      * Xóa listener khi user disconnect hoặc rời phòng
      */
-    public void removeListener(Long roomId, Long userId) {
-        ConcurrentHashMap<Long, ObjectOutputStream> roomListeners = listeners.get(roomId);
+    public void removeListener(Integer roomId, Integer userId) {
+        ConcurrentHashMap<Integer, ObjectOutputStream> roomListeners = listeners.get(roomId);
         if (roomListeners != null) {
             roomListeners.remove(userId);
             System.out.println("RoomUpdateManager: Listener removed - room=" + roomId + ", user=" + userId);
@@ -75,8 +75,8 @@ public class RoomUpdateManager {
      * @param roomId ID của phòng
      * @param room Object Room đã được cập nhật
      */
-    public void broadcastUpdate(Long roomId, Room room) {
-        ConcurrentHashMap<Long, ObjectOutputStream> roomListeners = listeners.get(roomId);
+    public void broadcastUpdate(Integer roomId, Room room) {
+        ConcurrentHashMap<Integer, ObjectOutputStream> roomListeners = listeners.get(roomId);
         
         if (roomListeners == null || roomListeners.isEmpty()) {
             System.out.println("RoomUpdateManager: No listeners for room " + roomId);
@@ -111,8 +111,8 @@ public class RoomUpdateManager {
      * @param command Command name (vd: "KICKED")
      * @param data Data của message
      */
-    public void sendToUser(Long roomId, Long userId, String command, String data) {
-        ConcurrentHashMap<Long, ObjectOutputStream> roomListeners = listeners.get(roomId);
+    public void sendToUser(Integer roomId, Integer userId, String command, String data) {
+        ConcurrentHashMap<Integer, ObjectOutputStream> roomListeners = listeners.get(roomId);
         if (roomListeners == null) {
             System.out.println("RoomUpdateManager: No listeners for room " + roomId);
             return;
@@ -139,8 +139,8 @@ public class RoomUpdateManager {
     /**
      * Lấy số lượng listeners trong một phòng
      */
-    public int getListenerCount(Long roomId) {
-        ConcurrentHashMap<Long, ObjectOutputStream> roomListeners = listeners.get(roomId);
+    public int getListenerCount(Integer roomId) {
+        ConcurrentHashMap<Integer, ObjectOutputStream> roomListeners = listeners.get(roomId);
         return (roomListeners == null) ? 0 : roomListeners.size();
     }
     
@@ -150,8 +150,8 @@ public class RoomUpdateManager {
      * @param userId ID của user
      * @return true nếu user có listener active
      */
-    public boolean hasListener(Long roomId, Long userId) {
-        ConcurrentHashMap<Long, ObjectOutputStream> roomListeners = listeners.get(roomId);
+    public boolean hasListener(Integer roomId, Integer userId) {
+        ConcurrentHashMap<Integer, ObjectOutputStream> roomListeners = listeners.get(roomId);
         return roomListeners != null && roomListeners.containsKey(userId);
     }
 }

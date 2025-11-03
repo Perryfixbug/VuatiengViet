@@ -10,7 +10,7 @@ import vuatiengvietpj.util.ConfigManager;
 import vuatiengvietpj.util.RedisManager;
 
 public class DictionaryDAO extends DAO {
-    private static final int DICT_TTL = ConfigManager.getInt("cache.dictionary.ttl", 3600);
+    private static final Integer DICT_TTL = ConfigManager.getInt("cache.dictionary.ttl", 3600);
 
     public List<Dictionary> getWordsByCategory(String category) {
         String cacheKey = "dictionary:category:" + category.toLowerCase();
@@ -36,7 +36,7 @@ public class DictionaryDAO extends DAO {
                         Dictionary dict = new Dictionary(
                                 rs.getString("word"),
                                 rs.getString("meaning"),
-                                rs.getLong("frequency"));
+                                rs.getInt("frequency"));
                         words.add(dict);
                     }
                 }
@@ -52,7 +52,7 @@ public class DictionaryDAO extends DAO {
         return words;
     }
 
-    public List<Dictionary> getRandomWords(int limit) {
+    public List<Dictionary> getRandomWords(Integer limit) {
         List<Dictionary> words = new ArrayList<>();
         String sql = "SELECT id, word, meaning, category, difficulty FROM dictionary ORDER BY RAND() LIMIT ?";
 
@@ -68,7 +68,7 @@ public class DictionaryDAO extends DAO {
                         Dictionary dict = new Dictionary(
                                 rs.getString("word"),
                                 rs.getString("meaning"),
-                                rs.getLong("frequency"));
+                                rs.getInt("frequency"));
                         words.add(dict);
                     }
                 }
@@ -116,12 +116,12 @@ public class DictionaryDAO extends DAO {
     }
 
     // Lấy frequency của một từ trong dictionary
-    public Long getWordFrequency(String word) {
+    public Integer getWordFrequency(String word) {
         String sql = "SELECT frequency FROM dictionary WHERE LOWER(word) = ?";
         try {
             getDBconnection();
             if (con == null)
-                return 0L;
+                return 0;
             
             try (PreparedStatement ps = con.prepareStatement(sql)) {
                 ps.setString(1, word.toLowerCase());
@@ -129,7 +129,7 @@ public class DictionaryDAO extends DAO {
                     if (rs.next()) {
                         Object freqObj = rs.getObject("frequency");
                         if (freqObj != null) {
-                            return rs.getLong("frequency");
+                            return rs.getInt("frequency");
                         }
                     }
                 }
@@ -137,6 +137,6 @@ public class DictionaryDAO extends DAO {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return 0L;
+        return 0;
     }
 }

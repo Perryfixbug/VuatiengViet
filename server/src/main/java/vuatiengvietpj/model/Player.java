@@ -4,52 +4,52 @@ import java.io.Serializable;
 
 public class Player implements Serializable {
 
-    private Long id;
-    private Long userId;
-    private Long roomId;
-    private int score;
+    private Integer id;
+    private Integer userId;
+    private Integer roomId;
+    private Integer score;
     private String name; // Tên người chơi (fullName từ User)
 
     public Player() {
 
     }
 
-    public Player(Long id, Long userId, Long roomId, int score) {
+    public Player(Integer id, Integer userId, Integer roomId, Integer score) {
         this.id = id;
         this.userId = userId;
         this.roomId = roomId;
         this.score = score;
     }
 
-    public Long getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
-    public int getScore() {
+    public Integer getScore() {
         return score;
     }
 
-    public void setScore(int score) {
+    public void setScore(Integer score) {
         this.score = score;
     }
 
-    public Long getRoomId() {
+    public Integer getRoomId() {
         return roomId;
     }
 
-    public void setRoomId(Long roomId) {
+    public void setRoomId(Integer roomId) {
         this.roomId = roomId;
     }
 
-    public Long getUserId() {
+    public Integer getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(Integer userId) {
         this.userId = userId;
     }
 

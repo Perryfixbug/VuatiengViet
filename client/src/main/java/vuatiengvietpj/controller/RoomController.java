@@ -33,7 +33,7 @@ public class RoomController extends ClientController implements AutoCloseable {
     }
     
     // Gửi yêu cầu tạo phòng lên server
-    public Response createRoom(Long ownerId) {
+    public Response createRoom(Integer ownerId) {
         try {
             return sendAndReceive(module, "CREATE", ownerId.toString());
         } catch (Exception e) {
@@ -43,7 +43,7 @@ public class RoomController extends ClientController implements AutoCloseable {
         return null;
     }
     // Gửi yêu cầu tham gia phòng lên server
-    public Response joinRoom(Long roomId, Long userId) {
+    public Response joinRoom(Integer roomId, Integer userId) {
         try {
             String data = roomId + "," + userId;
             return sendAndReceive(module, "JOIN", data);
@@ -54,7 +54,7 @@ public class RoomController extends ClientController implements AutoCloseable {
         return null;
     }
     // Gửi yêu cầu chỉnh sửa phòng lên server
-    public Response editRoom(Long roomId, Integer maxPlayer) {
+    public Response editRoom(Integer roomId, Integer maxPlayer) {
         try {
             String data = roomId + "," + maxPlayer;
             System.out.println("RoomController.editRoom: sending EDIT for room=" + roomId + ", max=" + maxPlayer);
@@ -68,7 +68,7 @@ public class RoomController extends ClientController implements AutoCloseable {
         return null;
     }
     // Gửi yêu cầu rời phòng lên server
-    public Response outRoom(Long roomId, Long userId) {
+    public Response outRoom(Integer roomId, Integer userId) {
         try {
             String data = roomId + "," + userId;
             return sendAndReceive(module, "OUT", data);
@@ -96,7 +96,7 @@ public class RoomController extends ClientController implements AutoCloseable {
     }
     
     // Lấy phòng theo id (trả về Room hoặc null)
-    public Room getRoomById(Long roomId) {
+    public Room getRoomById(Integer roomId) {
         try {
             Response response = sendAndReceive(module, "GETBYID", roomId.toString());
             if (response != null && response.isSuccess()) {
@@ -142,7 +142,7 @@ public class RoomController extends ClientController implements AutoCloseable {
         return null;
     }
     // Gửi yêu cầu làm mới trạng thái phòng lên server
-    public Response refreshRoom(Long roomId, boolean isPlaying) {
+    public Response refreshRoom(Integer roomId, boolean isPlaying) {
         try {
             String data = roomId + "," + isPlaying;
             return sendAndReceive(module, "REFRESH", data);
@@ -153,7 +153,7 @@ public class RoomController extends ClientController implements AutoCloseable {
         return null;
     }
     // Gửi yêu cầu đá người chơi khỏi phòng lên server
-    public Response kickPlayer(Long roomId, Long userId, Long kickedPlayerId) {
+    public Response kickPlayer(Integer roomId, Integer userId, Integer kickedPlayerId) {
         try {
             String data = roomId + "," + userId + "," + kickedPlayerId;
             return sendAndReceive(module, "KICK", data);
@@ -164,8 +164,8 @@ public class RoomController extends ClientController implements AutoCloseable {
         return null;
     }
     // Kiểm tra trạng thái alive của từng player trong phòng
-    public void checkAlive(Long roomId, List<Long> playerIds) {
-        for (Long playerId : playerIds) {
+    public void checkAlive(Integer roomId, List<Integer> playerIds) {
+        for (Integer playerId : playerIds) {
             try {
                 Response response = sendAndReceive("USER", "ALIVE", playerId.toString());
                 if (response == null || !response.isSuccess()) {

@@ -28,14 +28,14 @@ public class RoomDAO extends DAO {
                      "LEFT JOIN user o ON r.ownerId = o.id";
         try (PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
-            Map<Long, Room> roomMap = new HashMap<>();
+            Map<Integer, Room> roomMap = new HashMap<>();
             while (rs.next()) {
-                Long roomId = rs.getLong("id");
+                Integer roomId = rs.getInt("id");
                 Room room = roomMap.get(roomId);
                 if (room == null) {
                     room = new Room();
                     room.setId(roomId);
-                    room.setOwnerId(rs.getLong("ownerId"));
+                    room.setOwnerId(rs.getInt("ownerId"));
                     room.setOwnerName(rs.getString("ownerName"));
                     room.setMaxPlayer(rs.getInt("maxPlayer"));
                     Timestamp ts = rs.getTimestamp("createdAt");
@@ -43,7 +43,7 @@ public class RoomDAO extends DAO {
                     room.setStatus(rs.getString("status"));
                     Object cpObj = rs.getObject("challengePackId");
                     if (cpObj != null) {
-                        Long cpId = rs.getLong("challengePackId");
+                        Integer cpId = rs.getInt("challengePackId");
                         ChallengePack cp = new ChallengePackDAO().getChallengePackById(cpId);
                         room.setCp(cp);
                     }
@@ -53,7 +53,7 @@ public class RoomDAO extends DAO {
                 }
                 Object userObj = rs.getObject("userId");
                 if (userObj != null) {
-                    Long userId = rs.getLong("userId");
+                    Integer userId = rs.getInt("userId");
                     Player player = new Player();
                     player.setUserId(userId);
                     player.setRoomId(roomId);
@@ -71,7 +71,7 @@ public class RoomDAO extends DAO {
     }
 
     // Lấy thông tin phòng theo ID
-    public Room getRoomById(Long roomId) {
+    public Room getRoomById(Integer roomId) {
         Room room = null;
         String sql = "SELECT r.*, p.userId, p.score, u.fullName as playerName, o.fullName as ownerName " +
                      "FROM room r " +
@@ -80,13 +80,13 @@ public class RoomDAO extends DAO {
                      "LEFT JOIN user o ON r.ownerId = o.id " +
                      "WHERE r.id = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, roomId);
+            ps.setInt(1, roomId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     if (room == null) {
                         room = new Room();
-                        room.setId(rs.getLong("id"));
-                        room.setOwnerId(rs.getLong("ownerId"));
+                        room.setId(rs.getInt("id"));
+                        room.setOwnerId(rs.getInt("ownerId"));
                         room.setOwnerName(rs.getString("ownerName"));
                         room.setMaxPlayer(rs.getInt("maxPlayer"));
                         Timestamp ts = rs.getTimestamp("createdAt");
@@ -94,7 +94,7 @@ public class RoomDAO extends DAO {
                         room.setStatus(rs.getString("status"));
                         Object cpObj = rs.getObject("challengePackId");
                         if (cpObj != null) {
-                            Long cpId = rs.getLong("challengePackId");
+                            Integer cpId = rs.getInt("challengePackId");
                             ChallengePack cp = new ChallengePackDAO().getChallengePackById(cpId);
                             room.setCp(cp);
                         }
@@ -102,7 +102,7 @@ public class RoomDAO extends DAO {
                     }
                     Object userObj = rs.getObject("userId");
                     if (userObj != null) {
-                        Long userId = rs.getLong("userId");
+                        Integer userId = rs.getInt("userId");
                         Player player = new Player();
                         player.setUserId(userId);
                         player.setRoomId(roomId);
@@ -124,13 +124,13 @@ public class RoomDAO extends DAO {
     public void createRoom(Room room) {
         String sql = "INSERT INTO room (id, ownerId, maxPlayer, createdAt, status) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, room.getId());
-            ps.setLong(2, room.getOwnerId());
+            ps.setInt(1, room.getId());
+            ps.setInt(2, room.getOwnerId());
             ps.setInt(3, room.getMaxPlayer());
             ps.setTimestamp(4, Timestamp.from(room.getCreateAt()));
             ps.setString(5, room.getStatus());
 
-            int affectedRows = ps.executeUpdate();
+            Integer affectedRows = ps.executeUpdate();
             if (affectedRows == 0) {
                 throw new SQLException("Creating room failed, no rows affected.");
             }
@@ -138,13 +138,13 @@ public class RoomDAO extends DAO {
             // Insert owner into player table so DB state reflects in-memory room
             if (room.getPlayers() != null) {
                 for (Player p : room.getPlayers()) {
-                    if (p != null && p.getUserId() != null) {
+                    if (p != null && p.getUserId() != 0) {
                         addPlayerToRoom(room.getId(), p.getUserId());
                     }
                 }
             } else {
                 // if no players provided, still add owner
-                if (room.getOwnerId() != null) {
+                if (room.getOwnerId() != 0) {
                     addPlayerToRoom(room.getId(), room.getOwnerId());
                 }
             }
@@ -154,7 +154,7 @@ public class RoomDAO extends DAO {
     }
 
     // Cập nhập thông tin phòng
-    public void updateRoom(Long roomId, Long ownerId, String status, Integer maxPlayer) {
+    public void updateRoom(Integer roomId, Integer ownerId, String status, Integer maxPlayer) {
         StringBuilder sql = new StringBuilder("UPDATE room SET ");
         List<Object> params = new ArrayList<>();
         boolean firstField = true;
@@ -187,7 +187,7 @@ public class RoomDAO extends DAO {
         params.add(roomId);
 
         try (PreparedStatement ps = con.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) {
+            for (Integer i = 0; i < params.size(); i++) {
                 ps.setObject(i + 1, params.get(i));
             }
             ps.executeUpdate();
@@ -197,11 +197,11 @@ public class RoomDAO extends DAO {
     }
     
     // Tạo một challenge pack cho phòng
-    public void addChallengePackToRoom(Long roomId, Long cpId) {
+    public void addChallengePackToRoom(Integer roomId, Integer cpId) {
         String sql = "UPDATE room SET challengePackId = ? WHERE id = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, cpId);
-            ps.setLong(2, roomId);
+            ps.setInt(1, cpId);
+            ps.setInt(2, roomId);
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -209,11 +209,11 @@ public class RoomDAO extends DAO {
     }
     
     // Xóa người chơi khỏi phòng
-    public void deletePlayerFromRoom(Long roomId, Long userId) {
+    public void deletePlayerFromRoom(Integer roomId, Integer userId) {
         String sql = "DELETE FROM player WHERE userId = ? AND roomId = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, userId);
-            ps.setLong(2, roomId);
+            ps.setInt(1, userId);
+            ps.setInt(2, roomId);
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -221,12 +221,12 @@ public class RoomDAO extends DAO {
     }
     
     // Thêm người chơi vào phòng
-    public void addPlayerToRoom(Long roomId, Long userId) {
+    public void addPlayerToRoom(Integer roomId, Integer userId) {
         String checkSql = "SELECT COUNT(*) FROM player WHERE userId = ? AND roomId = ?";
         String insertSql = "INSERT INTO player (userId, roomId, score) VALUES (?, ?, 0)";
         try (PreparedStatement checkPs = con.prepareStatement(checkSql)) {
-            checkPs.setLong(1, userId);
-            checkPs.setLong(2, roomId);
+            checkPs.setInt(1, userId);
+            checkPs.setInt(2, roomId);
             try (ResultSet rs = checkPs.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0) {
                     System.out.println("Player already exists in the room.");
@@ -239,8 +239,8 @@ public class RoomDAO extends DAO {
         }
 
         try (PreparedStatement insertPs = con.prepareStatement(insertSql)) {
-            insertPs.setLong(1, userId);
-            insertPs.setLong(2, roomId);
+            insertPs.setInt(1, userId);
+            insertPs.setInt(2, roomId);
             insertPs.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -248,28 +248,28 @@ public class RoomDAO extends DAO {
     }
     
     // Cập nhật điểm của player trong room
-    public void updatePlayerScore(Long roomId, Long userId, int newScore) {
+    public void updatePlayerScore(Integer roomId, Integer userId, Integer newScore) {
         // Lấy score hiện tại và cộng thêm
         String selectSql = "SELECT score FROM player WHERE userId = ? AND roomId = ?";
         String updateSql = "UPDATE player SET score = ? WHERE userId = ? AND roomId = ?";
         
         try (PreparedStatement selectPs = con.prepareStatement(selectSql)) {
-            selectPs.setLong(1, userId);
-            selectPs.setLong(2, roomId);
+            selectPs.setInt(1, userId);
+            selectPs.setInt(2, roomId);
             try (ResultSet rs = selectPs.executeQuery()) {
-                int currentScore = 0;
+                Integer currentScore = 0;
                 if (rs.next()) {
                     currentScore = rs.getInt("score");
                 }
                 
                 // Tính điểm mới (cộng thêm điểm mới vào điểm hiện tại)
-                int updatedScore = currentScore + newScore;
+                Integer updatedScore = currentScore + newScore;
                 
                 // Cập nhật điểm
                 try (PreparedStatement updatePs = con.prepareStatement(updateSql)) {
                     updatePs.setInt(1, updatedScore);
-                    updatePs.setLong(2, userId);
-                    updatePs.setLong(3, roomId);
+                    updatePs.setInt(2, userId);
+                    updatePs.setInt(3, roomId);
                     updatePs.executeUpdate();
                     System.out.println("RoomDAO.updatePlayerScore: userId=" + userId + ", roomId=" + roomId + 
                                      ", oldScore=" + currentScore + ", addedScore=" + newScore + ", newScore=" + updatedScore);
@@ -281,15 +281,15 @@ public class RoomDAO extends DAO {
     }
     
     // Xóa phòng theo ID
-    public void deleteRoom(Long roomId) {
+    public void deleteRoom(Integer roomId) {
         String deletePlayersSql = "DELETE FROM player WHERE roomId = ?";
         String deleteRoomSql = "DELETE FROM room WHERE id = ?";
         try (PreparedStatement deletePlayersPs = con.prepareStatement(deletePlayersSql);
              PreparedStatement deleteRoomPs = con.prepareStatement(deleteRoomSql)) {
-            deletePlayersPs.setLong(1, roomId);
+            deletePlayersPs.setInt(1, roomId);
             deletePlayersPs.executeUpdate();
 
-            deleteRoomPs.setLong(1, roomId);
+            deleteRoomPs.setInt(1, roomId);
             deleteRoomPs.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();

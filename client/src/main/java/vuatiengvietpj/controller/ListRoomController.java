@@ -50,10 +50,10 @@ public class ListRoomController {
     @FXML
     private TextField txtSearchRoom;
 
-    private Long currentUserId; // ID người dùng hiện tại (sẽ được set từ nơi khác)
+    private Integer currentUserId; // ID người dùng hiện tại (sẽ được set từ nơi khác)
     private Stage primaryStage;
 
-    public void setCurrentUserId(Long userId) {
+    public void setCurrentUserId(Integer userId) {
         this.currentUserId = userId;
     }
 
@@ -74,8 +74,9 @@ public class ListRoomController {
         tblRoomList.getColumns().clear();
 
         // Cột "Mã phòng"
-        TableColumn<Room, Long> colId = new TableColumn<>("Mã phòng");
-        colId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        TableColumn<Room, Integer> colId = new TableColumn<>("Mã phòng");
+        colId.setCellValueFactory(cellData -> 
+            new javafx.beans.property.SimpleObjectProperty<>(cellData.getValue().getId()));
         colId.setPrefWidth(106);
 
         // Cột "Chủ phòng"
@@ -119,8 +120,9 @@ public class ListRoomController {
 
                     {
                         btnJoin.setOnAction((ActionEvent event) -> {
-                            Room room = getTableView().getItems().get(getIndex());
-                            joinRoomById(room.getId());
+                            Room room = (Room) getTableView().getItems().get(getIndex());
+                            Integer roomId = room.getId();
+                            joinRoomById(roomId);
                         });
                     }
 
@@ -152,6 +154,15 @@ public class ListRoomController {
                 List<Room> rooms = rc.parseRooms(response.getData());
                 ObservableList<Room> roomList = FXCollections.observableArrayList(rooms);
                 tblRoomList.setItems(roomList);
+                
+                // Log chi tiết danh sách phòng
+                System.out.println("📋 Danh sách phòng (" + rooms.size() + " phòng):");
+                for (Room room : rooms) {
+                    System.out.println("  - Phòng #" + room.getId() + 
+                                     " | Trạng thái: " + room.getStatus().toUpperCase() + 
+                                     " | Người chơi: " + (room.getPlayers() != null ? room.getPlayers().size() : 0) + "/" + room.getMaxPlayer() +
+                                     " | Chủ phòng: " + room.getOwnerName());
+                }
             } else {
                 String errorMsg = (response != null) ? response.getData() : "Không nhận được phản hồi từ server";
                 showAlert("Lỗi", "Không thể tải danh sách phòng: " + errorMsg);
@@ -165,12 +176,21 @@ public class ListRoomController {
     }
 
     // Tham gia vào phòng theo ID
-    private void joinRoomById(Long roomId) {
+    private void joinRoomById(Integer roomId) {
         System.out.println("ListRoomController.joinRoomById() - Tham gia phòng ID: " + roomId);
 
         if (currentUserId == null) {
             showAlert("Thông báo", "Bạn chưa đăng nhập!");
             return;
+        }
+        
+        // Lấy thông tin phòng hiện tại từ table để so sánh
+        Room cachedRoom = null;
+        for (Room r : tblRoomList.getItems()) {
+            if (r.getId().equals(roomId)) {
+                cachedRoom = r;
+                break;
+            }
         }
 
         try (RoomController rc = new RoomController("localhost", 2208)) {
@@ -178,8 +198,37 @@ public class ListRoomController {
 
             if (response != null && response.isSuccess()) {
                 Room joinedRoom = rc.parseRoom(response.getData());
-                System.out.println("ListRoomController - Tham gia phòng thành công: " + roomId);
-                openPendingRoom(joinedRoom);
+                
+                // Log so sánh status cũ và mới
+                if (cachedRoom != null) {
+                    String cachedStatus = cachedRoom.getStatus();
+                    String actualStatus = joinedRoom.getStatus();
+                    
+                    if (!cachedStatus.equalsIgnoreCase(actualStatus)) {
+                        System.out.println("⚠️  CẢNH BÁO: Dữ liệu phòng đã CŨ!");
+                        System.out.println("    Status trong danh sách: " + cachedStatus);
+                        System.out.println("    Status thực tế: " + actualStatus);
+                        System.out.println("    → Vui lòng nhấn 'Tải lại' để cập nhật danh sách phòng!");
+                        
+                        // Hiển thị cảnh báo cho người dùng
+                        showAlert("Thông báo", 
+                            "Thông tin phòng đã thay đổi!\n" +
+                            "Trạng thái hiển thị: " + cachedStatus + "\n" +
+                            "Trạng thái thực tế: " + actualStatus + "\n\n" +
+                            "Vui lòng nhấn 'Tải lại' để cập nhật danh sách phòng.");
+                    }
+                }
+                
+                System.out.println("ListRoomController - Tham gia phòng thành công: " + roomId + ", status=" + joinedRoom.getStatus());
+                
+                // Kiểm tra status của phòng để navigate đúng màn hình
+                if ("playing".equalsIgnoreCase(joinedRoom.getStatus())) {
+                    System.out.println("ListRoomController - Room đang playing, navigate to PlayingRoom");
+                    openPlayingRoom(joinedRoom);
+                } else {
+                    System.out.println("ListRoomController - Room đang pending, navigate to PendingRoom");
+                    openPendingRoom(joinedRoom);
+                }
             } else {
                 String errorMsg = (response != null) ? response.getData() : "Không nhận được phản hồi từ server";
                 System.err.println("ListRoomController - Không thể tham gia phòng: " + errorMsg);
@@ -235,6 +284,47 @@ public class ListRoomController {
             System.err.println("ListRoomController - Lỗi khi mở PendingRoom: " + e.getMessage());
             e.printStackTrace();
             showAlert("Lỗi", "Không thể mở giao diện phòng chờ: " + e.getMessage());
+        }
+    }
+
+    // Mở giao diện phòng chơi (PlayingRoom) - cho người vào phòng đang playing
+    private void openPlayingRoom(Room room) {
+        if (room == null) {
+            System.err.println("ListRoomController.openPlayingRoom() - Room null!");
+            return;
+        }
+
+        try {
+            System.out.println("ListRoomController - Mở PlayingRoom cho phòng ID: " + room.getId());
+
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/vuatiengvietpj/PlayingRoom.fxml"));
+            Parent root = loader.load();
+
+            // Lấy controller của PlayingRoom và set dữ liệu
+            Object controller = loader.getController();
+            if (controller instanceof PlayingRoomController) {
+                PlayingRoomController playingController = (PlayingRoomController) controller;
+                playingController.setCurrentUserId(this.currentUserId);
+                playingController.setRoom(room);
+                
+                System.out.println("ListRoomController - Đã set room và userId cho PlayingRoom");
+            }
+
+            // Sử dụng primaryStage hiện tại
+            if (primaryStage != null) {
+                Scene scene = new Scene(root);
+                primaryStage.setTitle("Phòng chơi - Phòng #" + room.getId());
+                primaryStage.setScene(scene);
+                primaryStage.show();
+            } else {
+                System.err.println("ListRoomController - primaryStage is null!");
+                showAlert("Lỗi", "Không thể mở phòng chơi: Lỗi Stage");
+            }
+
+        } catch (IOException e) {
+            System.err.println("ListRoomController - Lỗi khi mở PlayingRoom: " + e.getMessage());
+            e.printStackTrace();
+            showAlert("Lỗi", "Không thể mở giao diện phòng chơi: " + e.getMessage());
         }
     }
 
@@ -342,7 +432,8 @@ public class ListRoomController {
 
             if (currentPlayers < maxPlayers) {
                 System.out.println("ListRoomController - Tìm thấy phòng chưa đầy: " + room.getId());
-                joinRoomById(room.getId());
+                Integer roomId = room.getId();
+                joinRoomById(roomId);
                 return;
             }
         }
@@ -353,8 +444,11 @@ public class ListRoomController {
 
     @FXML
     void OnClickReload(ActionEvent event) {
-        System.out.println("ListRoomController.OnClickReload() - Tải lại danh sách phòng");
+        System.out.println("=".repeat(60));
+        System.out.println("🔄 ListRoomController.OnClickReload() - Đang tải lại danh sách phòng...");
+        System.out.println("=".repeat(60));
         loadAllRooms();
+        System.out.println("✅ Đã cập nhật danh sách phòng mới nhất!");
     }
 
     @FXML
@@ -373,11 +467,11 @@ public class ListRoomController {
             return;
         }
 
-        Long roomId;
+        Integer roomId;
         try {
-            roomId = Long.parseLong(searchText.trim());
+            roomId = Integer.parseInt(searchText.trim());
         } catch (NumberFormatException e) {
-            showAlert("Lỗi", "Mã phòng phải là số!");
+            showAlert("Thông báo", "Mã phòng phải là số nguyên!");
             return;
         }
 

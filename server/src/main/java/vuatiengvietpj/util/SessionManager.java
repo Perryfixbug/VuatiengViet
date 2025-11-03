@@ -19,7 +19,7 @@ public class SessionManager {
             .excludeFieldsWithoutExposeAnnotation() // bỏ qua createAt/updateAt nếu không @Expose
             .create();
 
-    private static String key(long userId) {
+    private static String key(Integer userId) {
         return KEY_PREFIX + userId;
     }
 
@@ -56,7 +56,7 @@ public class SessionManager {
 
     }
 
-    public static User getUser(long userId) {
+    public static User getUser(Integer userId) {
         try (Jedis jedis = RedisManager.getResource()) {
             if (jedis == null)
                 return null;
@@ -68,19 +68,19 @@ public class SessionManager {
         }
     }
 
-    public static Long getLoginAtMs(long userId) {
+    public static Integer getLoginAtMs(Integer userId) {
         try (Jedis jedis = RedisManager.getResource()) {
             if (jedis == null)
                 return null;
             String v = jedis.hget(key(userId), "loginAtMs");
-            return (v == null) ? null : Long.parseLong(v);
+            return (v == null) ? null : Integer.parseInt(v);
         } catch (Exception e) {
             System.err.println("SessionManager.getLoginAtMs error: " + e.getMessage());
             return null;
         }
     }
 
-    public static boolean checkNewIpAddressforSession(long userId, String newIp) {
+    public static boolean checkNewIpAddressforSession(Integer userId, String newIp) {
         try (Jedis jedis = RedisManager.getResource()) {
             if (jedis == null)
                 return false;
@@ -95,7 +95,7 @@ public class SessionManager {
         }
     }
 
-    public static boolean isLoggedIn(long userId) {
+    public static boolean isLoggedIn(Integer userId) {
         try (Jedis jedis = RedisManager.getResource()) {
             return jedis != null && jedis.exists(key(userId));
         } catch (Exception e) {
@@ -104,7 +104,7 @@ public class SessionManager {
         }
     }
 
-    public static boolean destroy(long userId) {
+    public static boolean destroy(Integer userId) {
         try (Jedis jedis = RedisManager.getResource()) {
             if (jedis == null)
                 return false;

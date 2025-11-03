@@ -5,25 +5,25 @@ import java.io.Serializable;
 import java.util.Arrays;
 
 public class ChallengePack implements Serializable {
-    private Long id;
+    private Integer id;
     private char[] quizz;
-    private int level;
+    private Integer level;
 
     public ChallengePack() {
 
     }
 
-    public ChallengePack(long id, char[] quizz, int level) {
+    public ChallengePack(Integer id, char[] quizz, Integer level) {
         this.id = id;
         this.quizz = quizz;
         this.level = level;
     }
 
-    public long getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -35,11 +35,11 @@ public class ChallengePack implements Serializable {
         this.quizz = quizz;
     }
 
-    public int getLevel() {
+    public Integer getLevel() {
         return level;
     }
 
-    public void setLevel(int level) {
+    public void setLevel(Integer level) {
         this.level = level;
     }
 

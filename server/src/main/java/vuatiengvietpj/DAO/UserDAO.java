@@ -27,7 +27,7 @@ public class UserDAO extends DAO {
             stmt.setString(3, user.getPassword());
             stmt.setTimestamp(4, Timestamp.from(now));
             stmt.setTimestamp(5, Timestamp.from(now));
-            stmt.setLong(6, user.getTotalScore() != null ? user.getTotalScore() : 0L);
+            stmt.setInt(6, user.getTotalScore() != null ? user.getTotalScore() : 0);
 
             int result = stmt.executeUpdate();
             stmt.close();
@@ -68,7 +68,7 @@ public class UserDAO extends DAO {
         }
     }
 
-    public boolean updateScore(Long userId, Long newScore) {
+    public boolean updateScore(int userId, int newScore) {
         String sql = "UPDATE user SET totalScore = ?, updateAt = ? WHERE id = ?";
 
         try {
@@ -79,9 +79,9 @@ public class UserDAO extends DAO {
             }
             PreparedStatement stmt = con.prepareStatement(sql);
 
-            stmt.setLong(1, newScore);
+            stmt.setInt(1, newScore);
             stmt.setTimestamp(2, Timestamp.from(Instant.now()));
-            stmt.setLong(3, userId);
+            stmt.setInt(3, userId);
 
             int result = stmt.executeUpdate();
             stmt.close();
@@ -96,7 +96,7 @@ public class UserDAO extends DAO {
         }
     }
 
-    public User findById(Long id) {
+    public User findById(int id) {
         String sql = "SELECT * FROM user WHERE id = ?";
 
         try {
@@ -106,7 +106,7 @@ public class UserDAO extends DAO {
                 return null;
             }
             PreparedStatement stmt = con.prepareStatement(sql);
-            stmt.setLong(1, id);
+            stmt.setInt(1, id);
 
             ResultSet rs = stmt.executeQuery();
 
@@ -233,7 +233,7 @@ public class UserDAO extends DAO {
     private User mapResultSetToUser(ResultSet rs) throws SQLException {
         User user = new User();
 
-        user.setId(rs.getLong("id"));
+        user.setId(rs.getInt("id"));
         user.setFullName(rs.getString("fullName"));
         user.setEmail(rs.getString("email"));
         user.setPassword(rs.getString("password"));
@@ -248,7 +248,7 @@ public class UserDAO extends DAO {
             user.setUpdateAt(updateAt.toInstant());
         }
 
-        user.setTotalScore(rs.getLong("totalScore"));
+        user.setTotalScore(rs.getInt("totalScore"));
 
         return user;
     }

@@ -10,15 +10,15 @@ public class ChallengePackDAO extends DAO {
     public ChallengePackDAO() {
         getDBconnection();
     }
-    public ChallengePack getChallengePackById(Long cpId) {
+    public ChallengePack getChallengePackById(Integer cpId) {
         ChallengePack cp = null;
         String sql = "SELECT * FROM ChallengePack WHERE id = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, cpId);
+            ps.setInt(1, cpId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     cp = new ChallengePack();
-                    cp.setId(rs.getLong("id"));
+                    cp.setId(rs.getInt("id"));
                     cp.setQuizz(rs.getString("quizz").toCharArray());
                     cp.setLevel(rs.getInt("level"));
                 }
@@ -28,8 +28,8 @@ public class ChallengePackDAO extends DAO {
         }
         return cp;
     }
-    public int getNumberCP(){
-        int count = 0;
+    public Integer getNumberCP(){
+        Integer count = 0;
         String sql = "SELECT COUNT(*) AS total FROM challengePack";
         try (PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -43,13 +43,13 @@ public class ChallengePackDAO extends DAO {
     }
     
     // Lấy danh sách tất cả challenge pack IDs
-    public java.util.List<Long> getAllChallengePackIds() {
-        java.util.List<Long> ids = new java.util.ArrayList<>();
+    public java.util.List<Integer> getAllChallengePackIds() {
+        java.util.List<Integer> ids = new java.util.ArrayList<>();
         String sql = "SELECT id FROM challengePack";
         try (PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                ids.add(rs.getLong("id"));
+                ids.add(rs.getInt("id"));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -58,11 +58,11 @@ public class ChallengePackDAO extends DAO {
     }
     
     // Lấy danh sách đáp án của challenge pack
-    public java.util.List<String> getAnswersByChallengePackId(Long cpId) {
+    public java.util.List<String> getAnswersByChallengePackId(Integer cpId) {
         java.util.List<String> answers = new java.util.ArrayList<>();
         String sql = "SELECT dictionaryWord FROM Answer WHERE challengePackId = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, cpId);
+            ps.setInt(1, cpId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     answers.add(rs.getString("dictionaryWord"));

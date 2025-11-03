@@ -23,7 +23,7 @@ import java.time.Instant;
  */
 public class RoomManager {
     private static final RoomManager instance = new RoomManager();
-    private final ConcurrentMap<Long, List<ClientConnection>> roomClients = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Integer, List<ClientConnection>> roomClients = new ConcurrentHashMap<>();
     private final Gson gson;
 
     private RoomManager() {
@@ -40,7 +40,7 @@ public class RoomManager {
     /**
      * Đăng ký client vào room để nhận broadcast
      */
-    public synchronized void subscribeToRoom(Long roomId, Socket socket, ObjectOutputStream out) {
+    public synchronized void subscribeToRoom(Integer roomId, Socket socket, ObjectOutputStream out) {
         roomClients.putIfAbsent(roomId, new ArrayList<>());
         ClientConnection conn = new ClientConnection(socket, out);
         roomClients.get(roomId).add(conn);
@@ -50,7 +50,7 @@ public class RoomManager {
     /**
      * Hủy đăng ký client khỏi room
      */
-    public synchronized void unsubscribeFromRoom(Long roomId, Socket socket) {
+    public synchronized void unsubscribeFromRoom(Integer roomId, Socket socket) {
         List<ClientConnection> clients = roomClients.get(roomId);
         if (clients != null) {
             clients.removeIf(conn -> conn.socket.equals(socket));
@@ -64,7 +64,7 @@ public class RoomManager {
     /**
      * Broadcast scoreboard đến tất cả clients trong room
      */
-    public void broadcastScoreBoard(Long roomId, ScoreBoard scoreBoard) {
+    public void broadcastScoreBoard(Integer roomId, ScoreBoard scoreBoard) {
         List<ClientConnection> clients = roomClients.get(roomId);
         if (clients == null || clients.isEmpty()) {
             System.out.println("RoomManager: No clients in room " + roomId);
@@ -100,7 +100,7 @@ public class RoomManager {
     /**
      * Lấy số lượng clients trong room
      */
-    public int getClientCount(Long roomId) {
+    public int getClientCount(Integer roomId) {
         List<ClientConnection> clients = roomClients.get(roomId);
         return clients != null ? clients.size() : 0;
     }

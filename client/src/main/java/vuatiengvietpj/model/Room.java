@@ -5,10 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Room {
-    private Long id;
-    private Long ownerId;
+    private Integer id;
+    private Integer ownerId;
     private String ownerName; // Tên chủ phòng
-    private int maxPlayer;
+    private Integer maxPlayer;
     private List<Player> players = new ArrayList<>();
     private Instant createAt;
     private ChallengePack cp; // Challenge pack được gán cho room
@@ -17,7 +17,7 @@ public class Room {
     public Room() {
     }
 
-    public Room(Long id, Long ownerId, int maxPlayer, Instant createAt, String status, List<Player> players) {
+    public Room(Integer id, Integer ownerId, Integer maxPlayer, Instant createAt, String status, List<Player> players) {
         this.id = id;
         this.ownerId = ownerId;
         this.maxPlayer = maxPlayer;
@@ -26,27 +26,27 @@ public class Room {
         this.players = players;
     }
 
-    public Long getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
-    public Long getOwnerId() {
+    public Integer getOwnerId() {
         return ownerId;
     }
 
-    public void setOwnerId(Long ownerId) {
+    public void setOwnerId(Integer ownerId) {
         this.ownerId = ownerId;
     }
 
-    public int getMaxPlayer() {
+    public Integer getMaxPlayer() {
         return maxPlayer;
     }
 
-    public void setMaxPlayer(int maxPlayer) {
+    public void setMaxPlayer(Integer maxPlayer) {
         this.maxPlayer = maxPlayer;
     }
 

@@ -3,12 +3,12 @@ package vuatiengvietpj.model;
 public class Dictionary {
     private String word;
     private String meaning;
-    private Long frequency;
+    private Integer frequency;
 
     public Dictionary() {
     }
 
-    public Dictionary(String word, String meaning, Long frequency) {
+    public Dictionary(String word, String meaning, Integer frequency) {
         this.word = word;
         this.meaning = meaning;
         this.frequency = frequency;
@@ -30,11 +30,11 @@ public class Dictionary {
         this.meaning = meaning;
     }
 
-    public Long getFrequency() {
+    public Integer getFrequency() {
         return frequency;
     }
 
-    public void setFrequency(Long frequency) {
+    public void setFrequency(Integer frequency) {
         this.frequency = frequency;
     }
 

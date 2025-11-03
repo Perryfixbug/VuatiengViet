@@ -98,7 +98,7 @@ public class PlayingRoomController {
 
     // State
     private Room currentRoom;
-    private Long currentUserId;
+    private Integer currentUserId;
     private Stage primaryStage;
     
     // Game controller connection
@@ -128,11 +128,11 @@ public class PlayingRoomController {
     private ObservableList<Player> scoreboardData = FXCollections.observableArrayList();
     
     // Timer state
-    private int remainingSeconds = 5;
+    private Integer remainingSeconds = 5;
     private boolean gameStarted = false;
     private boolean showCountdownOnLoad = false;
     
-    public void setCurrentUserId(Long id) {
+    public void setCurrentUserId(Integer id) {
         this.currentUserId = id;
         System.out.println("PlayingRoomController.setCurrentUserId: " + id);
     }
@@ -263,7 +263,7 @@ public class PlayingRoomController {
     private void initializeScoreboard() {
         // Setup table columns
         colRank.setCellValueFactory(cellData -> {
-            int rank = scoreboardData.indexOf(cellData.getValue()) + 1;
+            Integer rank = scoreboardData.indexOf(cellData.getValue()) + 1;
             return new ReadOnlyObjectWrapper<>(rank);
         });
         
@@ -273,8 +273,10 @@ public class PlayingRoomController {
             return new ReadOnlyObjectWrapper<>(name);
         });
         
-        colScore.setCellValueFactory(cellData -> 
-            new ReadOnlyObjectWrapper<>(cellData.getValue().getScore()));
+        colScore.setCellValueFactory(cellData -> {
+            Integer score = cellData.getValue().getScore();
+            return new ReadOnlyObjectWrapper<>(score != null ? score : 0);
+        });
         
         tblScoreboard.setItems(scoreboardData);
         
@@ -286,21 +288,25 @@ public class PlayingRoomController {
         if (room == null || room.getPlayers() == null) return;
         
         List<Player> players = new ArrayList<>(room.getPlayers());
-        // Sort by score descending
-        players.sort((p1, p2) -> Integer.compare(p2.getScore(), p1.getScore()));
+        // Sort by score descending (handle null scores - treat as 0)
+        players.sort((p1, p2) -> {
+            Integer score1 = (p1.getScore() != null) ? p1.getScore() : 0;
+            Integer score2 = (p2.getScore() != null) ? p2.getScore() : 0;
+            return Integer.compare(score2, score1);
+        });
         
         Platform.runLater(() -> {
             scoreboardData.setAll(players);
             
             // Update my score and rank
             if (currentUserId != null) {
-                int myRank = -1;
-                int myScore = 0;
+                Integer myRank = -1;
+                Integer myScore = 0;
                 
-                for (int i = 0; i < players.size(); i++) {
+                for (Integer i = 0; i < players.size(); i++) {
                     if (players.get(i).getUserId().equals(currentUserId)) {
                         myRank = i + 1;
-                        myScore = players.get(i).getScore();
+                        myScore = (players.get(i).getScore() != null) ? players.get(i).getScore() : 0;
                         break;
                     }
                 }
@@ -449,39 +455,77 @@ public class PlayingRoomController {
     }
     
     private void handleServerUpdate(Response response) {
-        System.out.println("[PlayingRoom] Received: " + response.getMaLenh());
+        System.out.println("[PlayingRoom] ========== Received UPDATE ==========");
+        System.out.println("[PlayingRoom] MaLenh: " + response.getMaLenh());
+        System.out.println("[PlayingRoom] IsSuccess: " + response.isSuccess());
+        System.out.println("[PlayingRoom] Data preview: " + (response.getData() != null ? response.getData().substring(0, Math.min(100, response.getData().length())) : "null"));
         
         if ("UPDATE".equals(response.getMaLenh())) {
             try {
                 Room updatedRoom = gson.fromJson(response.getData(), Room.class);
                 
-                // Kiểm tra nếu nhận được phòng MỚI (ID khác với phòng hiện tại)
-                // Điều này xảy ra khi chủ phòng kết thúc game và tạo phòng mới
-                if (currentRoom != null && updatedRoom.getId() != null && 
-                    !updatedRoom.getId().equals(currentRoom.getId())) {
-                    
-                    System.out.println("[PlayingRoom] Received new room from owner: " + 
-                                     updatedRoom.getId() + " (old: " + currentRoom.getId() + ")");
-                    
-                    Platform.runLater(() -> {
-                        currentRoom = updatedRoom; // Update to new room
-                        updateScoreboardFromRoom(updatedRoom);
-                        stopListening();
-                        
-                        // Hiển thị dialog scoreboard cho thành viên
-                        showFinalScoreboardDialog();
-                        // navigateToPendingRoom() sẽ được gọi trong dialog
-                    });
-                    return;
+                System.out.println("[PlayingRoom] Parsed updatedRoom: id=" + updatedRoom.getId() + 
+                                 ", status=" + updatedRoom.getStatus() + 
+                                 ", players=" + (updatedRoom.getPlayers() != null ? updatedRoom.getPlayers().size() : 0));
+                
+                // Kiểm tra xem có phải phòng mới (game đã kết thúc) không
+                // QUAN TRỌNG: Phải check TRƯỚC KHI updateRoomData()
+                // 
+                // CÓ 2 TRƯỜNG HỢP:
+                // 1. Status "playing" → "pending" với CÙNG ID (không xảy ra với logic hiện tại)
+                // 2. Room ID KHÁC và status = "pending" (server tạo phòng mới sau END)
+                
+                // Debug từng điều kiện riêng lẻ
+                boolean cond1 = (currentRoom != null);
+                boolean cond2 = cond1 && "playing".equalsIgnoreCase(currentRoom.getStatus());
+                boolean cond3 = (updatedRoom != null);
+                boolean cond4 = cond3 && "pending".equalsIgnoreCase(updatedRoom.getStatus());
+                boolean cond5 = cond1 && cond3 && !currentRoom.getId().equals(updatedRoom.getId());
+                
+                System.out.println("[DEBUG] Condition breakdown:");
+                System.out.println("  cond1 (currentRoom != null): " + cond1);
+                System.out.println("  cond2 (currentRoom.status = 'playing'): " + cond2);
+                System.out.println("  cond3 (updatedRoom != null): " + cond3);
+                System.out.println("  cond4 (updatedRoom.status = 'pending'): " + cond4);
+                System.out.println("  cond5 (IDs different): " + cond5);
+                if (cond1 && cond3) {
+                    System.out.println("  currentRoom.getId(): " + currentRoom.getId() + " (type: " + currentRoom.getId().getClass().getSimpleName() + ")");
+                    System.out.println("  updatedRoom.getId(): " + updatedRoom.getId() + " (type: " + updatedRoom.getId().getClass().getSimpleName() + ")");
+                    System.out.println("  IDs equal? " + currentRoom.getId().equals(updatedRoom.getId()));
                 }
                 
-                // Cập nhật room data (bảng điểm realtime khi đang chơi)
+                final boolean gameJustEnded = cond1 && cond2 && cond3 && cond4 && cond5;
+                
+                System.out.println("[PlayingRoom] currentRoom: " + (currentRoom != null ? "id=" + currentRoom.getId() + ", status=" + currentRoom.getStatus() : "null"));
+                System.out.println("[PlayingRoom] gameJustEnded check: currentRoomId=" + 
+                                 (currentRoom != null ? currentRoom.getId() : "null") +
+                                 ", currentStatus=" + (currentRoom != null ? currentRoom.getStatus() : "null") + 
+                                 ", newRoomId=" + (updatedRoom != null ? updatedRoom.getId() : "null") +
+                                 ", newStatus=" + (updatedRoom != null ? updatedRoom.getStatus() : "null") +
+                                 ", gameJustEnded=" + gameJustEnded);
+                
                 Platform.runLater(() -> {
+                    // Cập nhật room data TRƯỚC
                     updateRoomData(updatedRoom);
+                    
+                    // Nếu game vừa kết thúc (chuyển từ playing → pending)
+                    // CHỈ hiển thị dialog cho NON-OWNER vì owner đã nhận kết quả từ END request
+                    if (gameJustEnded && !isRoomOwner()) {
+                        System.out.println("[PlayingRoom] *** GAME JUST ENDED (non-owner) - Showing final scoreboard dialog ***");
+                        // Hiển thị dialog kết quả cho người chơi thường
+                        stopListening();
+                        showFinalScoreboardDialog();
+                        // navigateToPendingRoom() sẽ được gọi trong dialog
+                    } else if (gameJustEnded && isRoomOwner()) {
+                        System.out.println("[PlayingRoom] Game ended but owner already handled in OnClickEndGame");
+                    } else {
+                        System.out.println("[PlayingRoom] Game still playing, just updating scoreboard");
+                    }
                 });
                 
             } catch (Exception e) {
                 System.err.println("[PlayingRoom] Error parsing update: " + e.getMessage());
+                e.printStackTrace();
             }
         } else if ("KICKED".equals(response.getMaLenh())) {
             Platform.runLater(() -> {
@@ -490,6 +534,7 @@ public class PlayingRoomController {
                 navigateToRoomList();
             });
         }
+        System.out.println("[PlayingRoom] ========== End UPDATE handling ==========");
     }
     
     private void stopListening() {
@@ -698,7 +743,7 @@ public class PlayingRoomController {
                 System.out.println("[PlayingRoom] END response data: " + newRoomIdStr);
                 if (newRoomIdStr != null && !newRoomIdStr.isEmpty()) {
                     try {
-                        Long newRoomId = Long.parseLong(newRoomIdStr);
+                        Integer newRoomId = Integer.parseInt(newRoomIdStr);
                         System.out.println("[PlayingRoom] Game ended, new room created: " + newRoomId);
                         
                         // FETCH phòng mới từ server để có đầy đủ data
@@ -831,6 +876,12 @@ public class PlayingRoomController {
         }
     }
 
+    // Helper method to check if current user is room owner
+    private boolean isRoomOwner() {
+        return currentRoom != null && currentUserId != null && 
+               currentUserId.equals(currentRoom.getOwnerId());
+    }
+
     private void showMessage(String message, boolean isError) {
         lblSubmitMessage.setText(message);
         lblSubmitMessage.setVisible(true);
@@ -900,7 +951,7 @@ public class PlayingRoomController {
         TableColumn<Player, Integer> rankCol = new TableColumn<>("Hạng");
         rankCol.setPrefWidth(80);
         rankCol.setCellValueFactory(cellData -> {
-            int index = scoreboardData.indexOf(cellData.getValue());
+            Integer index = scoreboardData.indexOf(cellData.getValue());
             return new ReadOnlyObjectWrapper<>(index + 1);
         });
         rankCol.setStyle("-fx-alignment: CENTER;");
@@ -919,8 +970,10 @@ public class PlayingRoomController {
         // Cột Điểm
         TableColumn<Player, Integer> scoreCol = new TableColumn<>("Điểm");
         scoreCol.setPrefWidth(100);
-        scoreCol.setCellValueFactory(cellData -> 
-            new ReadOnlyObjectWrapper<>(cellData.getValue().getScore()));
+        scoreCol.setCellValueFactory(cellData -> {
+            Integer score = cellData.getValue().getScore();
+            return new ReadOnlyObjectWrapper<>(score != null ? score : 0);
+        });
         scoreCol.setStyle("-fx-alignment: CENTER;");
         
         scoreTable.getColumns().addAll(rankCol, nameCol, scoreCol);
@@ -933,7 +986,7 @@ public class PlayingRoomController {
         if (currentUserId != null) {
             for (Player p : finalScores) {
                 if (p.getUserId().equals(currentUserId)) {
-                    int index = finalScores.indexOf(p);
+                    Integer index = finalScores.indexOf(p);
                     scoreTable.getSelectionModel().select(index);
                     scoreTable.scrollTo(index);
                     break;
@@ -949,8 +1002,9 @@ public class PlayingRoomController {
         if (currentUserId != null) {
             for (Player p : finalScores) {
                 if (p.getUserId().equals(currentUserId)) {
-                    int rank = finalScores.indexOf(p) + 1;
-                    Label yourInfo = new Label("Điểm của bạn: " + p.getScore() + " (Hạng: " + rank + ")");
+                    Integer rank = finalScores.indexOf(p) + 1;
+                    Integer score = (p.getScore() != null) ? p.getScore() : 0;
+                    Label yourInfo = new Label("Điểm của bạn: " + score + " (Hạng: " + rank + ")");
                     yourInfo.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #27ae60;");
                     content.getChildren().add(yourInfo);
                     break;

@@ -67,8 +67,8 @@ public class GameController extends ServerController {
                 return createErrorResponse(module, "START", "Dữ liệu không hợp lệ");
             }
             
-            Long roomId = Long.parseLong(parts[0]);
-            Long userId = Long.parseLong(parts[1]);
+            Integer  roomId = Integer .parseInt(parts[0]);
+            Integer  userId = Integer .parseInt(parts[1]);
             
             // Lấy room từ database
             Room room = roomDAO.getRoomById(roomId);
@@ -87,14 +87,14 @@ public class GameController extends ServerController {
             }
             
             // Lấy danh sách tất cả challenge pack IDs
-            List<Long> challengePackIds = challengePackDAO.getAllChallengePackIds();
+            List<Integer > challengePackIds = challengePackDAO.getAllChallengePackIds();
             if (challengePackIds.isEmpty()) {
                 return createErrorResponse(module, "START", "Không có challenge pack nào trong hệ thống");
             }
             
             // Chọn ngẫu nhiên một challenge pack ID
             Random random = new Random();
-            Long randomCpId = challengePackIds.get(random.nextInt(challengePackIds.size()));
+            Integer  randomCpId = challengePackIds.get(random.nextInt(challengePackIds.size()));
             
             // Gán challenge pack vào room
             roomDAO.addChallengePackToRoom(roomId, randomCpId);
@@ -132,8 +132,8 @@ public class GameController extends ServerController {
                 return createErrorResponse(module, "SUBMIT", "Du lieu khong hop le");
             }
             
-            Long roomId = Long.parseLong(parts[0]);
-            Long userId = Long.parseLong(parts[1]);
+            Integer  roomId = Integer.parseInt(parts[0]);
+            Integer  userId = Integer.parseInt(parts[1]);
             String answer = parts[2]; // Chưa trim để check empty
             
             // Kiểm tra answer không rỗng
@@ -164,7 +164,7 @@ public class GameController extends ServerController {
                 return createErrorResponse(module, "SUBMIT", "Phòng chưa có challenge pack");
             }
             
-            long challengePackId = room.getCp().getId();
+            Integer  challengePackId = room.getCp().getId();
             
             // Lấy danh sách đáp án của ChallengePack
             List<String> validAnswers = challengePackDAO.getAnswersByChallengePackId(challengePackId);
@@ -188,7 +188,7 @@ public class GameController extends ServerController {
             }
             
             // Tìm thấy đáp án đúng - Lấy frequency từ Dictionary
-            Long frequency = dictionaryDAO.getWordFrequency(matchedAnswer);
+            Integer  frequency = dictionaryDAO.getWordFrequency(matchedAnswer);
             
             // Lấy level từ ChallengePack
             int level = room.getCp().getLevel();
@@ -217,8 +217,8 @@ public class GameController extends ServerController {
                 return createErrorResponse(module, "UPDATE", "Du lieu khong hop le");
             }
             
-            Long roomId = Long.parseLong(parts[0]);
-            Long userId = Long.parseLong(parts[1]);
+            Integer  roomId = Integer.parseInt(parts[0]);
+            Integer  userId = Integer.parseInt(parts[1]);
             int points = Integer.parseInt(parts[2]);
             
             // Kiểm tra room có tồn tại không
@@ -253,7 +253,7 @@ public class GameController extends ServerController {
             return createErrorResponse(module, "END", "Du lieu khong hop le");
         }
         try {
-            Long roomId = Long.parseLong(data);
+            Integer  roomId = Integer.parseInt(data);
             
             // Kiểm tra room có tồn tại không
             Room room = roomDAO.getRoomById(roomId);
@@ -284,7 +284,7 @@ public class GameController extends ServerController {
                 return createErrorResponse(module, "END", "Không tìm thấy phòng");
             }
             
-            Long ownerId = oldRoom.getOwnerId();
+            Integer  ownerId = oldRoom.getOwnerId();
             int maxPlayer = oldRoom.getMaxPlayer();
             ChallengePack cp = oldRoom.getCp();
             List<Player> players = new ArrayList<>(oldRoom.getPlayers()); // Copy để tránh reference
@@ -299,7 +299,7 @@ public class GameController extends ServerController {
             // TẠO phòng mới với thông tin đã lưu
             // Generate new ID (chỉ lấy 8 chữ số)
             long timestamp = System.currentTimeMillis() + new java.util.Random().nextInt(1000);
-            Long newRoomId = (long) ((int) (timestamp % 100000000));
+            Integer newRoomId = (Integer) ((int) (timestamp % 100000000));
             Room newRoom = new Room(newRoomId, ownerId, maxPlayer, Instant.now(), "pending", cp, new ArrayList<>());
             
             // THÊM lại players vào phòng mới (reset điểm về 0)
@@ -339,7 +339,7 @@ public class GameController extends ServerController {
     }
 
     // Helper method: Kiểm tra user có trong room không
-    private boolean isUserInRoom(Room room, Long userId) {
+    private boolean isUserInRoom(Room room, Integer  userId) {
         if (room.getPlayers() == null || userId == null) {
             return false;
         }
@@ -381,7 +381,7 @@ public class GameController extends ServerController {
             return createErrorResponse(module, "SUBSCRIBE", "Du lieu khong hop le");
         }
         try {
-            Long roomId = Long.parseLong(data);
+            Integer  roomId = Integer .parseInt(data);
             
             // Kiểm tra room tồn tại
             Room room = roomDAO.getRoomById(roomId);
@@ -407,7 +407,7 @@ public class GameController extends ServerController {
             return createErrorResponse(module, "UNSUBSCRIBE", "Du lieu khong hop le");
         }
         try {
-            Long roomId = Long.parseLong(data);
+            Integer roomId = Integer.parseInt(data);
             
             // Hủy đăng ký client khỏi room
             RoomManager.getInstance().unsubscribeFromRoom(roomId, clientSocket);
@@ -421,7 +421,7 @@ public class GameController extends ServerController {
     }
 
     // Broadcast scoreboard đến tất cả clients trong room
-    public void broadcastScoreBoard(Long roomId) {
+    public void broadcastScoreBoard(Integer  roomId) {
         Room room = roomDAO.getRoomById(roomId);
         if (room == null) {
             return;

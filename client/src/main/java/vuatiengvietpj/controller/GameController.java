@@ -13,9 +13,9 @@ public class GameController extends ClientController implements AutoCloseable {
     private String module = "GAME";
     private Gson gson;
     // Danh sách SubmitResult (chỉ đáp án đúng) cho từng user (theo userId) - chỉ lưu ở client
-    private static java.util.Map<Long, java.util.List<SubmitResult>> submittedResultsByUser = new java.util.concurrent.ConcurrentHashMap<>();
+    private static java.util.Map<Integer, java.util.List<SubmitResult>> submittedResultsByUser = new java.util.concurrent.ConcurrentHashMap<>();
 
-    public GameController(String host, int port) throws IOException {
+    public GameController(String host, Integer port) throws IOException {
         super(host, port);
         this.gson = new GsonBuilder()
                 .registerTypeAdapter(java.time.Instant.class, new com.google.gson.JsonSerializer<java.time.Instant>() {
@@ -34,7 +34,7 @@ public class GameController extends ClientController implements AutoCloseable {
     }
 
     // Gửi yêu cầu bắt đầu game lên server
-    public Response startGame(Long roomId, Long userId) {
+    public Response startGame(Integer roomId, Integer userId) {
         try {
             String data = roomId + "," + userId;
             return sendAndReceive(module, "START", data);
@@ -68,11 +68,11 @@ public class GameController extends ClientController implements AutoCloseable {
     }
 
     // Submit answer và parse kết quả
-    public SubmitResult submitAnswerWithResult(Long roomId, Long userId, String answer) {
+    public SubmitResult submitAnswerWithResult(Integer roomId, Integer userId, String answer) {
         try {
             // Kiểm tra answer không rỗng
             if (answer == null || answer.trim().isEmpty()) {
-                return new SubmitResult(false, null, 0L, 0, "Đáp án không được rỗng");
+                return new SubmitResult(false, null, 0, 0, "Đáp án không được rỗng");
             }
             
             // Kiểm tra xem từ đã được submit chưa bằng cách so sánh với các SubmitResult đã lưu của user
@@ -86,7 +86,7 @@ public class GameController extends ClientController implements AutoCloseable {
                 
                 if (alreadySubmitted) {
                     // Từ này đã được submit trước đó - không gửi request lên server
-                    return new SubmitResult(false, null, 0L, 0, "Bạn đã đoán từ này rồi");
+                    return new SubmitResult(false, null, 0, 0, "Bạn đã đoán từ này rồi");
                 }
             }
             
@@ -99,14 +99,14 @@ public class GameController extends ClientController implements AutoCloseable {
                 String[] parts = response.getData().split(",");
                 if (parts.length >= 3) {
                     String matchedAnswer = parts[0];
-                    Long frequency = Long.parseLong(parts[1]);
-                    int level = Integer.parseInt(parts[2]);
+                    Integer frequency = Integer.parseInt(parts[1]);
+                    Integer level = Integer.parseInt(parts[2]);
                     
                     // Tính điểm theo công thức: level * 10 * t
                     // frequency < 10: t = 3
                     // 10 <= frequency < 100: t = 2
                     // còn lại: t = 1
-                    int t;
+                    Integer t;
                     if (frequency < 10) {
                         t = 3;
                     } else if (10 <= frequency && frequency < 100) {
@@ -114,7 +114,7 @@ public class GameController extends ClientController implements AutoCloseable {
                     } else {
                         t = 1;
                     }
-                    int points = level * 10 * t;
+                    Integer points = level * 10 * t;
                     System.out.println("GameController: Điểm được cộng: " + points + " (level=" + level + ", frequency=" + frequency + ", t=" + t + ")");
                     
                     // Tạo SubmitResult cho đáp án đúng
@@ -132,33 +132,33 @@ public class GameController extends ClientController implements AutoCloseable {
                 }
             } else {
                 String errorMsg = (response != null) ? response.getData() : "Không nhận được phản hồi";
-                return new SubmitResult(false, null, 0L, 0, errorMsg);
+                return new SubmitResult(false, null, 0, 0, errorMsg);
             }
         } catch (Exception e) {
             System.err.println("Error submitting answer: " + e.getMessage());
             e.printStackTrace();
-            return new SubmitResult(false, null, 0L, 0, "Lỗi: " + e.getMessage());
+            return new SubmitResult(false, null, 0, 0, "Lỗi: " + e.getMessage());
         }
-        return new SubmitResult(false, null, 0L, 0, "Lỗi không xác định");
+        return new SubmitResult(false, null, 0, 0, "Lỗi không xác định");
     }
     
     // Lấy danh sách SubmitResult (chỉ đáp án đúng) của một user (chỉ lưu ở client)
-    public static java.util.List<SubmitResult> getUserSubmittedResults(Long userId) {
+    public static java.util.List<SubmitResult> getUserSubmittedResults(Integer userId) {
         return submittedResultsByUser.getOrDefault(userId, new java.util.ArrayList<>());
     }
     
     // Xóa danh sách SubmitResult của một user (khi logout hoặc reset)
-    public static void clearUserSubmittedResults(Long userId) {
+    public static void clearUserSubmittedResults(Integer userId) {
         submittedResultsByUser.remove(userId);
     }
     
     // Lấy số lượng đáp án đúng của một user
-    public static int getUserSubmittedResultsCount(Long userId) {
+    public static Integer getUserSubmittedResultsCount(Integer userId) {
         return getUserSubmittedResults(userId).size();
     }
     
     // Lấy danh sách từ đã đoán đúng của một user (helper method)
-    public static java.util.Set<String> getUserGuessedWords(Long userId) {
+    public static java.util.Set<String> getUserGuessedWords(Integer userId) {
         java.util.Set<String> words = new java.util.HashSet<>();
         getUserSubmittedResults(userId).stream()
                 .filter(SubmitResult::isSuccess)
@@ -174,12 +174,12 @@ public class GameController extends ClientController implements AutoCloseable {
     public static class SubmitResult {
         private boolean success;
         private String matchedAnswer;
-        private Long frequency;
-        private int level;
-        private int points; // Điểm đã tính
+        private Integer frequency;
+        private Integer level;
+        private Integer points; // Điểm đã tính
         private String errorMessage;
         
-        public SubmitResult(boolean success, String matchedAnswer, Long frequency, int level) {
+        public SubmitResult(boolean success, String matchedAnswer, Integer frequency, Integer level) {
             this.success = success;
             this.matchedAnswer = matchedAnswer;
             this.frequency = frequency;
@@ -187,7 +187,7 @@ public class GameController extends ClientController implements AutoCloseable {
             this.points = 0;
         }
         
-        public SubmitResult(boolean success, String matchedAnswer, Long frequency, int level, int points) {
+        public SubmitResult(boolean success, String matchedAnswer, Integer frequency, Integer level, Integer points) {
             this.success = success;
             this.matchedAnswer = matchedAnswer;
             this.frequency = frequency;
@@ -195,7 +195,7 @@ public class GameController extends ClientController implements AutoCloseable {
             this.points = points;
         }
         
-        public SubmitResult(boolean success, String matchedAnswer, Long frequency, int level, String errorMessage) {
+        public SubmitResult(boolean success, String matchedAnswer, Integer frequency, Integer level, String errorMessage) {
             this.success = success;
             this.matchedAnswer = matchedAnswer;
             this.frequency = frequency;
@@ -212,15 +212,15 @@ public class GameController extends ClientController implements AutoCloseable {
             return matchedAnswer;
         }
         
-        public Long getFrequency() {
+        public Integer getFrequency() {
             return frequency;
         }
         
-        public int getLevel() {
+        public Integer getLevel() {
             return level;
         }
         
-        public int getPoints() {
+        public Integer getPoints() {
             return points;
         }
         
@@ -230,7 +230,7 @@ public class GameController extends ClientController implements AutoCloseable {
     }
 
     // Gửi điểm đã tính lên server để cập nhật vào database
-    public Response updateScore(Long roomId, Long userId, int points) {
+    public Response updateScore(Integer roomId, Integer userId, Integer points) {
         try {
             String data = roomId + "," + userId + "," + points;
             Response response = sendAndReceive(module, "UPDATE", data);
@@ -259,7 +259,7 @@ public class GameController extends ClientController implements AutoCloseable {
     }
 
     // Subscribe để nhận broadcast scoreboard
-    public Response subscribe(Long roomId) {
+    public Response subscribe(Integer roomId) {
         try {
             return sendAndReceive(module, "SUBSCRIBE", roomId.toString());
         } catch (Exception e) {
@@ -270,7 +270,7 @@ public class GameController extends ClientController implements AutoCloseable {
     }
 
     // Unsubscribe khỏi room
-    public Response unsubscribe(Long roomId) {
+    public Response unsubscribe(Integer roomId) {
         try {
             return sendAndReceive(module, "UNSUBSCRIBE", roomId.toString());
         } catch (Exception e) {

@@ -43,7 +43,7 @@ public class PendingRoomController {
     
     // state
     private Room currentRoom;
-    private Long currentUserId;
+    private Integer currentUserId;
     private javafx.stage.Stage primaryStage;
     
     // suppress selection events when we programmatically set ChoiceBox value
@@ -71,7 +71,7 @@ public class PendingRoomController {
     // flag để phân biệt tự out hay bị kick
     private boolean isManualExit = false;
 
-    public void setCurrentUserId(Long id) {
+    public void setCurrentUserId(Integer id) {
         this.currentUserId = id;
         System.out.println("PendingRoomController.setCurrentUserId: " + id);
     }
@@ -408,7 +408,7 @@ public class PendingRoomController {
                     if (p == null || currentRoom == null) {
                         return new javafx.beans.property.SimpleStringProperty("Thành viên");
                     }
-                    Long ownerId = currentRoom.getOwnerId();
+                    Integer ownerId = currentRoom.getOwnerId();
                     String role = java.util.Objects.equals(p.getUserId(), ownerId) 
                         ? "Chủ phòng" 
                         : "Thành viên";
@@ -480,7 +480,7 @@ public class PendingRoomController {
                     if (currentRoom == null) {
                         return new javafx.beans.property.SimpleStringProperty("Thành viên");
                     }
-                    Long ownerId = currentRoom.getOwnerId();
+                    Integer ownerId = currentRoom.getOwnerId();
                     String role = java.util.Objects.equals(cell.getValue().getUserId(), ownerId) 
                         ? "Chủ phòng" 
                         : "Thành viên";
