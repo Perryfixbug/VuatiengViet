@@ -437,7 +437,7 @@ public class PlayingRoomController {
             // Update UI if room data changed
             boolean changed = false;
             if (latest.getCp() != null && currentRoom.getCp() != null) {
-                if (!latest.getCp().getId().equals(currentRoom.getCp().getId())) {
+                if ( latest.getCp().getId() != currentRoom.getCp().getId()) {
                     changed = true;
                 }
             } else if (latest.getCp() != null || currentRoom.getCp() != null) {

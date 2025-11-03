@@ -11,7 +11,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
 
-import vuatiengvietpj.DAO.UserDAO;
+import vuatiengvietpj.dao.UserDAO;
 import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
 import vuatiengvietpj.model.User;

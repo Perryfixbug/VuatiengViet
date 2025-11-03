@@ -11,9 +11,9 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
 
-import vuatiengvietpj.DAO.ChallengePackDAO;
-import vuatiengvietpj.DAO.DictionaryDAO;
-import vuatiengvietpj.DAO.RoomDAO;
+import vuatiengvietpj.dao.ChallengePackDAO;
+import vuatiengvietpj.dao.DictionaryDAO;
+import vuatiengvietpj.dao.RoomDAO;
 import vuatiengvietpj.model.Player;
 import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
