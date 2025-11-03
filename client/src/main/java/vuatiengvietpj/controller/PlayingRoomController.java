@@ -111,6 +111,16 @@ public class PlayingRoomController {
     private ObjectInputStream listenerIn;
     private Thread listenerThread;
     
+    // Flag để tránh gọi END nhiều lần
+    private volatile boolean gameEnding = false;
+    
+    // Gson with Instant serializer
+    private final com.google.gson.Gson gson = new com.google.gson.GsonBuilder()
+            .registerTypeAdapter(java.time.Instant.class,
+                    (com.google.gson.JsonDeserializer<java.time.Instant>) (json, typeOfT, context) -> 
+                        java.time.Instant.parse(json.getAsString()))
+            .create();
+    
     // Timer executor
     private java.util.concurrent.ScheduledExecutorService timerExecutor;
     
@@ -118,7 +128,7 @@ public class PlayingRoomController {
     private ObservableList<Player> scoreboardData = FXCollections.observableArrayList();
     
     // Timer state
-    private int remainingSeconds = 60;
+    private int remainingSeconds = 5;
     private boolean gameStarted = false;
     private boolean showCountdownOnLoad = false;
     
@@ -145,9 +155,8 @@ public class PlayingRoomController {
             updateChallengePack();
             initializeScoreboard();
             
-            // Bắt đầu polling để refresh room data (bao gồm scoreboard)
-            // Không dùng broadcast listener vì ObjectInputStream không thread-safe
-            startPolling();
+            // Bắt đầu listener để nhận realtime updates từ server
+            startListening();
             
             // Nếu là lần đầu load (từ PendingRoom sau khi start game), hiển thị countdown
             if (showCountdownOnLoad) {
@@ -157,14 +166,29 @@ public class PlayingRoomController {
                 startGameTimer();
             }
             
-            // Stop polling và cleanup khi đóng cửa sổ
+            // LƯU primaryStage nếu chưa có (lưu NGAY khi scene còn attach vào window)
+            if (primaryStage == null) {
+                try {
+                    javafx.stage.Window w = lblRoomId.getScene().getWindow();
+                    if (w instanceof javafx.stage.Stage) {
+                        primaryStage = (javafx.stage.Stage) w;
+                        System.out.println("[PlayingRoom] Auto-saved primaryStage from scene in setRoom()");
+                    }
+                } catch (Exception e) {
+                    System.err.println("[PlayingRoom] Could not save primaryStage in setRoom(): " + e.getMessage());
+                }
+            }
+            
+            // Cleanup khi đóng cửa sổ
             try {
                 javafx.stage.Window w = lblRoomId.getScene().getWindow();
                 if (w instanceof javafx.stage.Stage) {
                     ((javafx.stage.Stage) w).setOnHidden(evt -> {
-                        stopPolling();
                         stopGameTimer();
+                        stopListening();
                         cleanupGameController();
+                        // Auto-kick khi đóng cửa sổ (ấn X)
+                        handleWindowClose();
                     });
                 }
             } catch (Exception ignored) {}
@@ -211,7 +235,7 @@ public class PlayingRoomController {
         }
         
         // Initialize timer display
-        lblTimer.setText("60s");
+        lblTimer.setText("5s");
     }
 
     private void updateChallengePack() {
@@ -389,7 +413,7 @@ public class PlayingRoomController {
         
         listenerThread = new Thread(() -> {
             try {
-                System.out.println("🎧 [PlayingRoom] Starting listener for room " + currentRoom.getId());
+                System.out.println("[PlayingRoom] Starting listener for room " + currentRoom.getId());
                 
                 listenerSocket = new Socket("localhost", 2208);
                 listenerOut = new ObjectOutputStream(listenerSocket.getOutputStream());
@@ -400,7 +424,7 @@ public class PlayingRoomController {
                 listenerOut.writeObject(req);
                 listenerOut.flush();
                 
-                System.out.println("✅ [PlayingRoom] Listener started for room " + currentRoom.getId());
+                System.out.println("[PlayingRoom] Listener started for room " + currentRoom.getId());
                 
                 while (listening && !listenerSocket.isClosed()) {
                     try {
@@ -408,15 +432,15 @@ public class PlayingRoomController {
                         handleServerUpdate(response);
                     } catch (Exception e) {
                         if (listening) {
-                            System.err.println("❌ [PlayingRoom] Listener read error: " + e.getMessage());
+                            System.err.println("[PlayingRoom] Listener read error: " + e.getMessage());
                         }
                         break;
                     }
                 }
             } catch (Exception e) {
-                System.err.println("❌ [PlayingRoom] Failed to start listener: " + e.getMessage());
+                System.err.println("[PlayingRoom] Failed to start listener: " + e.getMessage());
             } finally {
-                System.out.println("🔌 [PlayingRoom] Listener thread ending");
+                System.out.println("[PlayingRoom] Listener thread ending");
             }
         }, "PlayingRoomListener-" + currentRoom.getId());
         
@@ -425,30 +449,39 @@ public class PlayingRoomController {
     }
     
     private void handleServerUpdate(Response response) {
-        System.out.println("📥 [PlayingRoom] Received: " + response.getMaLenh());
+        System.out.println("[PlayingRoom] Received: " + response.getMaLenh());
         
         if ("UPDATE".equals(response.getMaLenh())) {
             try {
-                Room updatedRoom = new com.google.gson.Gson().fromJson(response.getData(), Room.class);
+                Room updatedRoom = gson.fromJson(response.getData(), Room.class);
                 
-                // Kiểm tra nếu status thay đổi
-                if (!"playing".equals(updatedRoom.getStatus()) && 
-                    "playing".equals(currentRoom.getStatus())) {
-                    // Game kết thúc, quay về pending room
+                // Kiểm tra nếu nhận được phòng MỚI (ID khác với phòng hiện tại)
+                // Điều này xảy ra khi chủ phòng kết thúc game và tạo phòng mới
+                if (currentRoom != null && updatedRoom.getId() != null && 
+                    !updatedRoom.getId().equals(currentRoom.getId())) {
+                    
+                    System.out.println("[PlayingRoom] Received new room from owner: " + 
+                                     updatedRoom.getId() + " (old: " + currentRoom.getId() + ")");
+                    
                     Platform.runLater(() -> {
+                        currentRoom = updatedRoom; // Update to new room
+                        updateScoreboardFromRoom(updatedRoom);
                         stopListening();
-                        navigateToPendingRoom();
+                        
+                        // Hiển thị dialog scoreboard cho thành viên
+                        showFinalScoreboardDialog();
+                        // navigateToPendingRoom() sẽ được gọi trong dialog
                     });
                     return;
                 }
                 
-                // Cập nhật room data
+                // Cập nhật room data (bảng điểm realtime khi đang chơi)
                 Platform.runLater(() -> {
                     updateRoomData(updatedRoom);
                 });
                 
             } catch (Exception e) {
-                System.err.println("❌ [PlayingRoom] Error parsing update: " + e.getMessage());
+                System.err.println("[PlayingRoom] Error parsing update: " + e.getMessage());
             }
         } else if ("KICKED".equals(response.getMaLenh())) {
             Platform.runLater(() -> {
@@ -469,106 +502,20 @@ public class PlayingRoomController {
         } catch (Exception e) {
             System.err.println("[PlayingRoom] Error stopping listener: " + e.getMessage());
         }
-        System.out.println("❌ [PlayingRoom] Listener stopped");
+        System.out.println("[PlayingRoom] Listener stopped");
     }
     
     private void updateRoomData(Room room) {
         this.currentRoom = room;
-        System.out.println("🔄 [PlayingRoom] Room updated: " + room.getId());
+        System.out.println("[PlayingRoom] Room updated: " + room.getId() + 
+                         ", players=" + (room.getPlayers() != null ? room.getPlayers().size() : 0));
         
-        // Cập nhật scoreboard nếu cần
-        if (room.getPlayers() != null) {
-            scoreboardData.setAll(room.getPlayers());
-        }
+        // Cập nhật scoreboard với sort
+        updateScoreboardFromRoom(room);
     }
     
     // ========== END LISTENER METHODS ==========
 
-    private void startPolling() {
-        // DEPRECATED: Replaced by startListening()
-        startListening();
-    }
-
-    private void refreshRoomData() {
-        try {
-            if (currentRoom == null) return;
-            
-            Room latest;
-            try (RoomController rc = new RoomController("localhost", 2208)) {
-                latest = rc.getRoomById(currentRoom.getId());
-            } catch (Exception e) {
-                System.err.println("PlayingRoomController.refreshRoomData - Lỗi kết nối: " + e.getMessage());
-                return;
-            }
-            
-            if (latest == null) {
-                // Room không tồn tại - quay về list room
-                Platform.runLater(() -> {
-                    stopPolling();
-                    navigateToRoomList();
-                });
-                return;
-            }
-            
-            // Kiểm tra status thay đổi
-            if (!"playing".equals(latest.getStatus())) {
-                // Room không còn ở trạng thái playing - quay về pending room
-                Platform.runLater(() -> {
-                    stopPolling();
-                    updateRoomInfo();
-                    navigateToPendingRoom();
-                });
-                return;
-            }
-            
-            // Kiểm tra user có còn trong room không
-            if (currentUserId != null && latest.getPlayers() != null) {
-                boolean stillInRoom = latest.getPlayers().stream()
-                    .anyMatch(p -> p.getUserId().equals(currentUserId));
-                
-                if (!stillInRoom) {
-                    Platform.runLater(() -> {
-                        stopPolling();
-                        showInfo("Rời phòng", "Bạn không còn trong phòng này");
-                        navigateToRoomList();
-                    });
-                    return;
-                }
-            }
-            
-            // Update UI if room data changed
-            boolean changed = false;
-            if (latest.getCp() != null && currentRoom.getCp() != null) {
-                if (!(latest.getCp().getId() != currentRoom.getCp().getId())) {
-                    changed = true;
-                }
-            } else if (latest.getCp() != null || currentRoom.getCp() != null) {
-                changed = true;
-            }
-            
-            if (changed) {
-                Room finalLatest = latest;
-                Platform.runLater(() -> {
-                    this.currentRoom = finalLatest;
-                    updateChallengePack();
-                    updateScoreboardFromRoom(finalLatest);
-                });
-            } else {
-                // Just update scoreboard
-                updateScoreboardFromRoom(latest);
-            }
-            
-        } catch (Exception e) {
-            System.err.println("PlayingRoomController.refreshRoomData error: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    private void stopPolling() {
-        // DEPRECATED: Replaced by stopListening()
-        stopListening();
-    }
-    
     /**
      * Cleanup: Đóng GameController và unsubscribe
      * Chỉ gọi khi thực sự cần cleanup (navigate away, close window, etc.)
@@ -585,6 +532,24 @@ public class PlayingRoomController {
         }
         gameController = null;
         System.out.println("PlayingRoomController: Đã đóng GameController");
+    }
+    
+    /**
+     * Xử lý khi đóng cửa sổ (ấn X) - Auto OUT khỏi phòng
+     */
+    private void handleWindowClose() {
+        if (currentRoom == null || currentUserId == null) {
+            return;
+        }
+        
+        try (vuatiengvietpj.controller.RoomController rc = new vuatiengvietpj.controller.RoomController("localhost", 2208)) {
+            Response response = rc.outRoom(currentRoom.getId(), currentUserId);
+            if (response != null && response.isSuccess()) {
+                System.out.println("PlayingRoomController: Auto OUT room khi đóng cửa sổ - roomId=" + currentRoom.getId());
+            }
+        } catch (Exception e) {
+            System.err.println("PlayingRoomController.handleWindowClose error: " + e.getMessage());
+        }
     }
     
     /**
@@ -624,9 +589,9 @@ public class PlayingRoomController {
     private void startGameTimer() {
         stopGameTimer(); // Dừng timer cũ nếu có
         
-        remainingSeconds = 60;
+        remainingSeconds = 5;
         gameStarted = true;
-        lblTimer.setText("60s");
+        lblTimer.setText("5s");
         
         timerExecutor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r);
@@ -670,6 +635,13 @@ public class PlayingRoomController {
      * Tự động kết thúc game khi timer hết
      */
     private void autoEndGame() {
+        // PREVENT duplicate END calls (race condition từ nhiều listeners)
+        if (gameEnding) {
+            System.out.println("[PlayingRoom] Game already ending, skip duplicate call");
+            return;
+        }
+        gameEnding = true;
+        
         stopGameTimer();
         btnSubmit.setDisable(true);
         lblStatusBar.setText("Hết thời gian! Game đang kết thúc...");
@@ -682,74 +654,125 @@ public class PlayingRoomController {
             });
         }
         
-        // Gọi API END game
+        // CHỈ CHỦ PHÒNG mới gọi END API, các thành viên khác chờ nhận UPDATE từ server
+        boolean isOwner = (currentRoom != null && currentUserId != null && 
+                          currentUserId.equals(currentRoom.getOwnerId()));
+        
+        if (!isOwner) {
+            System.out.println("[PlayingRoom] Not owner, waiting for server update...");
+            lblStatusBar.setText("Đang chờ kết quả từ chủ phòng...");
+            // Không làm gì, chờ handleServerUpdate nhận UPDATE với phòng mới
+            return;
+        }
+        
+        System.out.println("[PlayingRoom] Owner ending game and creating new room...");
+        
+        // Gọi API END game (CHỈ CHỦ PHÒNG)
         new Thread(() -> {
             if (gameController == null) {
                 Platform.runLater(() -> {
                     showError("Kết thúc game", "Lỗi: GameController chưa được khởi tạo");
                     navigateToPendingRoom();
                 });
+                gameEnding = false; // Reset flag
                 return;
             }
             
             try {
+                // Gọi END để server tạo phòng mới và trả về roomId mới
+                System.out.println("[PlayingRoom] Calling END for room: " + currentRoom.getId());
                 Response response = gameController.endGame(currentRoom.getId().toString());
                 
-                Platform.runLater(() -> {
-                    if (response != null && response.isSuccess()) {
-                        // Refresh scoreboard lần cuối trước khi hiển thị (gọi trong thread riêng)
-                        new Thread(() -> {
-                            try {
-                                // Đợi một chút để server broadcast scoreboard cuối cùng và cập nhật database
-                                Thread.sleep(800);
+                if (response == null || !response.isSuccess()) {
+                    System.err.println("[PlayingRoom] END failed: " + (response != null ? response.getData() : "null response"));
+                    Platform.runLater(() -> {
+                        showError("Kết thúc game", "Không thể kết thúc game: " + 
+                                (response != null ? response.getData() : "Không nhận được phản hồi"));
+                    });
+                    gameEnding = false; // Reset flag
+                    return;
+                }
+                
+                // Parse NEW room ID từ response
+                String newRoomIdStr = response.getData();
+                System.out.println("[PlayingRoom] END response data: " + newRoomIdStr);
+                if (newRoomIdStr != null && !newRoomIdStr.isEmpty()) {
+                    try {
+                        Long newRoomId = Long.parseLong(newRoomIdStr);
+                        System.out.println("[PlayingRoom] Game ended, new room created: " + newRoomId);
+                        
+                        // FETCH phòng mới từ server để có đầy đủ data
+                        try (vuatiengvietpj.controller.RoomController rc = 
+                             new vuatiengvietpj.controller.RoomController("localhost", 2208)) {
+                            Room newRoom = rc.getRoomById(newRoomId);
+                            if (newRoom != null) {
+                                currentRoom = newRoom; // Replace toàn bộ room object
+                                System.out.println("[PlayingRoom] Fetched new room data: " + 
+                                                 newRoom.getId() + ", players=" + 
+                                                 (newRoom.getPlayers() != null ? newRoom.getPlayers().size() : 0));
                                 
-                                // Lấy room data mới nhất từ server một cách đồng bộ
-                                try (RoomController rc = new RoomController("localhost", 2208)) {
-                                    Room latestRoom = rc.getRoomById(currentRoom.getId());
-                                    if (latestRoom != null) {
-                                        // Cập nhật scoreboard từ room data mới nhất
-                                        Platform.runLater(() -> {
-                                            updateScoreboardFromRoom(latestRoom);
-                                            // Hiển thị bảng điểm số cuối cùng
-                                            showFinalScoreboardDialog();
-                                        });
-                                        return;
-                                    }
-                                } catch (Exception ex) {
-                                    System.err.println("Lỗi khi refresh room data: " + ex.getMessage());
-                                }
-                                
-                                // Nếu không lấy được data mới, vẫn hiển thị dialog với data hiện tại
-                                Platform.runLater(() -> showFinalScoreboardDialog());
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                                Platform.runLater(() -> showFinalScoreboardDialog());
+                                Platform.runLater(() -> {
+                                    // HIỂN THỊ dialog scoreboard TRƯỚC KHI navigate
+                                    updateScoreboardFromRoom(currentRoom);
+                                    stopListening();
+                                    showFinalScoreboardDialog();
+                                    // navigateToPendingRoom() sẽ được gọi TRONG showFinalScoreboardDialog()
+                                });
+                            } else {
+                                System.err.println("[PlayingRoom] Failed to fetch new room from server");
+                                Platform.runLater(() -> {
+                                    showError("Lỗi", "Không thể tải thông tin phòng mới");
+                                });
+                                gameEnding = false;
                             }
-                        }).start();
-                    } else {
-                        String errorMsg = (response != null) ? response.getData() : "Không nhận được phản hồi";
-                        showError("Kết thúc game", "Lỗi: " + errorMsg);
-                        // Vẫn quay về PendingRoom dù có lỗi
-                        navigateToPendingRoom();
+                        }
+                    } catch (NumberFormatException e) {
+                        System.err.println("[PlayingRoom] Invalid new room ID: " + newRoomIdStr);
+                        Platform.runLater(() -> {
+                            showError("Lỗi", "ID phòng mới không hợp lệ");
+                        });
+                        gameEnding = false; // Reset flag
+                    } catch (Exception e) {
+                        System.err.println("[PlayingRoom] Error fetching new room: " + e.getMessage());
+                        Platform.runLater(() -> {
+                            showError("Lỗi", "Không thể tải thông tin phòng mới: " + e.getMessage());
+                        });
+                        gameEnding = false;
                     }
-                });
-            } catch (Exception e) {
+                } else {
+                    System.err.println("[PlayingRoom] No new room ID in response");
+                    Platform.runLater(() -> {
+                        showError("Lỗi", "Không nhận được ID phòng mới");
+                    });
+                    gameEnding = false; // Reset flag
+                }
+                
+            } catch (Exception ex) {
+                System.err.println("Lỗi khi gọi endGame: " + ex.getMessage());
+                ex.printStackTrace();
                 Platform.runLater(() -> {
-                    showError("Kết thúc game", "Lỗi: " + e.getMessage());
-                    e.printStackTrace();
-                    // Vẫn quay về PendingRoom dù có lỗi
-                    navigateToPendingRoom();
+                    showError("Lỗi", "Không thể kết thúc game: " + ex.getMessage());
                 });
+                gameEnding = false; // Reset flag
             }
         }).start();
     }
 
     private void navigateToPendingRoom() {
+        System.out.println("[PlayingRoom] navigateToPendingRoom called");
+        
+        if (primaryStage == null) {
+            System.err.println("[PlayingRoom] ERROR: primaryStage is NULL - this should never happen!");
+            showError("Lỗi", "Không thể quay về phòng chờ. Vui lòng đóng cửa sổ và vào lại.");
+            return;
+        }
+        
         try {
-            stopPolling();
+            stopListening();
             stopGameTimer();
             cleanupGameController();
             
+            // Tạo PendingRoom mới với NEW room ID
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/vuatiengvietpj/PendingRoom.fxml"));
             Parent root = loader.load();
             Scene scene = new Scene(root);
@@ -758,23 +781,29 @@ public class PlayingRoomController {
             if (controller instanceof PendingRoomController) {
                 PendingRoomController prc = (PendingRoomController) controller;
                 prc.setCurrentUserId(currentUserId);
+                prc.setPrimaryStage(primaryStage);
                 prc.setRoom(currentRoom);
             }
             
-            if (primaryStage != null) {
-                primaryStage.setScene(scene);
-                primaryStage.setTitle("Phòng chơi");
-                primaryStage.show();
-            }
+            primaryStage.setScene(scene);
+            primaryStage.setTitle("Phòng chơi");
+            primaryStage.show();
+            System.out.println("[PlayingRoom] Successfully navigated to PendingRoom");
+            
         } catch (IOException e) {
-            System.err.println("PlayingRoomController.navigateToPendingRoom - Lỗi: " + e.getMessage());
+            System.err.println("PlayingRoomController.navigateToPendingRoom - IOException: " + e.getMessage());
             e.printStackTrace();
+            showError("Lỗi", "Không thể tải giao diện phòng chờ: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("PlayingRoomController.navigateToPendingRoom - Exception: " + e.getMessage());
+            e.printStackTrace();
+            showError("Lỗi", "Không thể quay về phòng chờ: " + e.getMessage());
         }
     }
 
     private void navigateToRoomList() {
         try {
-            stopPolling();
+            stopListening();
             stopGameTimer();
             cleanupGameController();
             
@@ -836,6 +865,28 @@ public class PlayingRoomController {
      * Hiển thị dialog bảng điểm số cuối cùng khi game kết thúc
      */
     private void showFinalScoreboardDialog() {
+        // LƯU STAGE TRƯỚC KHI hiển thị dialog (vì dialog có thể làm scene detach)
+        Stage savedStage = primaryStage;
+        if (savedStage == null) {
+            try {
+                if (lblRoomId != null && lblRoomId.getScene() != null) {
+                    javafx.stage.Window window = lblRoomId.getScene().getWindow();
+                    if (window instanceof Stage) {
+                        savedStage = (Stage) window;
+                        System.out.println("[PlayingRoom] Saved stage before showing dialog");
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("[PlayingRoom] Error saving stage: " + e.getMessage());
+            }
+        }
+        
+        // Lưu vào primaryStage nếu chưa có
+        if (primaryStage == null && savedStage != null) {
+            primaryStage = savedStage;
+            System.out.println("[PlayingRoom] Set primaryStage from saved stage");
+        }
+        
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("Game đã kết thúc");
         dialog.setHeaderText("Bảng điểm số cuối cùng");
@@ -910,20 +961,22 @@ public class PlayingRoomController {
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
         
-        // Đóng dialog và navigate về PendingRoom
-        dialog.setOnCloseRequest(e -> {
-            navigateToPendingRoom();
-        });
-        
-        // Xử lý khi click nút OK
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == ButtonType.OK) {
-                navigateToPendingRoom();
+        // SET OWNER cho dialog = stage hiện tại (để có thể lấy lại sau)
+        try {
+            if (lblRoomId != null && lblRoomId.getScene() != null && lblRoomId.getScene().getWindow() != null) {
+                dialog.initOwner(lblRoomId.getScene().getWindow());
+                System.out.println("[PlayingRoom] Set dialog owner to current window");
             }
-            return null;
-        });
+        } catch (Exception e) {
+            System.err.println("[PlayingRoom] Could not set dialog owner: " + e.getMessage());
+        }
         
+        // Hiển thị dialog và chờ đóng
         dialog.showAndWait();
+        
+        // Navigate về PendingRoom SAU KHI dialog đóng
+        System.out.println("[PlayingRoom] Dialog closed, navigating to PendingRoom...");
+        navigateToPendingRoom();
     }
 
     @FXML
@@ -971,9 +1024,9 @@ public class PlayingRoomController {
                     });
                 }
                 
-                // Dừng polling, timer và cleanup
+                // Dừng listener, timer và cleanup
                 Platform.runLater(() -> {
-                    stopPolling();
+                    stopListening();
                     stopGameTimer();
                     cleanupGameController();
                     

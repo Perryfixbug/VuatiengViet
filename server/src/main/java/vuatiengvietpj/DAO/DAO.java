@@ -1,4 +1,4 @@
-package vuatiengvietpj.DAO;
+package vuatiengvietpj.dao;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

@@ -20,6 +20,14 @@ public abstract class ServerController {
         this.out = new ObjectOutputStream(clientSocket.getOutputStream()); // Out trước
         this.in = new ObjectInputStream(clientSocket.getInputStream()); // In sau
     }
+    
+    /**
+     * Thiết lập streams từ bên ngoài (để tái sử dụng streams)
+     */
+    public void setStreams(ObjectInputStream in, ObjectOutputStream out) {
+        this.in = in;
+        this.out = out;
+    }
 
     // khung xử lý chung
     public final void handleClient(String ip) // chỗ này em chỉnh truyền Ip của client vào để xác minh thiết bị

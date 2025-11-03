@@ -44,9 +44,13 @@ public class PendingRoomController {
     // state
     private Room currentRoom;
     private Long currentUserId;
+    private javafx.stage.Stage primaryStage;
     
     // suppress selection events when we programmatically set ChoiceBox value
     private boolean suppressSelectionEvents = false;
+    
+    // Flag để tránh navigate 2 lần khi start game
+    private volatile boolean isNavigatingToGame = false;
     
     // LISTENER fields (thay thế polling)
     private Thread listenerThread;
@@ -54,6 +58,7 @@ public class PendingRoomController {
     private ObjectInputStream listenerIn;
     private ObjectOutputStream listenerOut;
     private volatile boolean listening = false;
+    
     private Gson gson = new com.google.gson.GsonBuilder()
         .registerTypeAdapter(java.time.Instant.class, 
             (com.google.gson.JsonDeserializer<java.time.Instant>) (json, type, ctx) -> 
@@ -69,6 +74,10 @@ public class PendingRoomController {
     public void setCurrentUserId(Long id) {
         this.currentUserId = id;
         System.out.println("PendingRoomController.setCurrentUserId: " + id);
+    }
+    
+    public void setPrimaryStage(javafx.stage.Stage stage) {
+        this.primaryStage = stage;
     }
 
     public void setOnRoomUpdated(Runnable cb) {
@@ -103,14 +112,6 @@ public class PendingRoomController {
             
             // THAY POLLING bằng LISTENING
             startListening();
-            
-            // Stop listening khi đóng cửa sổ
-            try {
-                javafx.stage.Window w = btnOutRoom.getScene().getWindow();
-                if (w instanceof javafx.stage.Stage) {
-                    ((javafx.stage.Stage) w).setOnHidden(evt -> stopListening());
-                }
-            } catch (Exception ignored) {}
         }
     }
 
@@ -207,51 +208,46 @@ public class PendingRoomController {
      */
     private void startListening() {
         if (currentRoom == null || currentUserId == null) {
-            System.err.println("⚠️ Cannot start listening: room or userId is null");
+            System.err.println("[PendingRoom] Cannot start listening: room or userId is null");
             return;
         }
         if (listening) {
-            System.out.println("⚠️ Already listening");
+            System.out.println("[PendingRoom] Already listening, skip");
             return;
         }
         
         listening = true;
         listenerThread = new Thread(() -> {
             try {
-                System.out.println("🎧 Starting listener for room " + currentRoom.getId());
+                System.out.println("[PendingRoom] Starting listener for room " + currentRoom.getId());
                 
-                // Tạo persistent connection
                 listenerSocket = new Socket("localhost", 2208);
                 listenerOut = new ObjectOutputStream(listenerSocket.getOutputStream());
                 listenerIn = new ObjectInputStream(listenerSocket.getInputStream());
                 
-                // Gửi LISTEN request
-                Request req = new Request("ROOM", "LISTEN", 
-                    currentRoom.getId() + "," + currentUserId);
+                Request req = new Request("ROOM", "LISTEN", currentRoom.getId() + "," + currentUserId);
                 listenerOut.writeObject(req);
                 listenerOut.flush();
                 
-                System.out.println("✅ Listener started for room " + currentRoom.getId());
+                System.out.println("[PendingRoom] Listener started for room " + currentRoom.getId());
                 
-                // Loop đọc updates từ server
                 while (listening && !listenerSocket.isClosed()) {
                     try {
                         Response response = (Response) listenerIn.readObject();
                         handleServerUpdate(response);
                     } catch (Exception e) {
                         if (listening) {
-                            System.err.println("❌ Listener read error: " + e.getMessage());
+                            System.err.println("[PendingRoom] Listener read error: " + e.getMessage());
                         }
                         break;
                     }
                 }
             } catch (Exception e) {
-                System.err.println("❌ Failed to start listener: " + e.getMessage());
-                e.printStackTrace();
+                System.err.println("[PendingRoom] Failed to start listener: " + e.getMessage());
             } finally {
-                System.out.println("🔌 Listener thread ending");
+                System.out.println("[PendingRoom] Listener thread ending");
             }
-        }, "RoomListener-" + currentRoom.getId());
+        }, "PendingRoomListener-" + currentRoom.getId());
         
         listenerThread.setDaemon(true);
         listenerThread.start();
@@ -261,7 +257,7 @@ public class PendingRoomController {
      * Xử lý updates nhận được từ server
      */
     private void handleServerUpdate(Response response) {
-        System.out.println("📥 Received: " + response.getMaLenh());
+        System.out.println("Received: " + response.getMaLenh());
         
         if ("UPDATE".equals(response.getMaLenh())) {
             // Room được cập nhật
@@ -271,9 +267,9 @@ public class PendingRoomController {
                 // Kiểm tra nếu game bắt đầu
                 if ("playing".equals(updatedRoom.getStatus()) && 
                     !"playing".equals(currentRoom.getStatus())) {
-                    System.out.println("🎮 Game started! Navigating to PlayingRoom...");
+                    System.out.println("Game started! Navigating to PlayingRoom...");
                     javafx.application.Platform.runLater(() -> {
-                        stopListening();
+                        // NOTE: GIỮ listener chạy để không bị auto-kick!
                         navigateToPlayingRoom(updatedRoom);
                     });
                     return;
@@ -283,7 +279,7 @@ public class PendingRoomController {
                 javafx.application.Platform.runLater(() -> updateRoomData(updatedRoom));
                 
             } catch (Exception e) {
-                System.err.println("❌ Error parsing room update: " + e.getMessage());
+                System.err.println("Error parsing room update: " + e.getMessage());
                 e.printStackTrace();
             }
             
@@ -299,7 +295,7 @@ public class PendingRoomController {
     }
     
     /**
-     * Dừng listener
+     * Dừng lắng nghe updates từ server
      */
     private void stopListening() {
         listening = false;
@@ -309,9 +305,9 @@ public class PendingRoomController {
             if (listenerSocket != null) listenerSocket.close();
             if (listenerThread != null) listenerThread.interrupt();
         } catch (Exception e) {
-            System.err.println("Error stopping listener: " + e.getMessage());
+            System.err.println("[PendingRoom] Error stopping listener: " + e.getMessage());
         }
-        System.out.println("❌ Listener stopped");
+        System.out.println("[PendingRoom] Listener stopped");
     }
     
     /**
@@ -358,7 +354,7 @@ public class PendingRoomController {
         if (room == null) return;
         
         this.currentRoom = room;
-        System.out.println("🔄 PendingRoomController.updateRoomData: roomId=" + room.getId() + 
+        System.out.println("PendingRoomController.updateRoomData: roomId=" + room.getId() + 
                          ", players=" + (room.getPlayers() != null ? room.getPlayers().size() : 0) + 
                          ", max=" + room.getMaxPlayer());
         
@@ -621,7 +617,15 @@ public class PendingRoomController {
      * Chuyển sang màn hình PlayingRoom khi game bắt đầu
      */
     private void navigateToPlayingRoom(Room room) {
+        // PREVENT duplicate navigation
+        if (isNavigatingToGame) {
+            System.out.println("[PendingRoom] Already navigating to game, skip duplicate call");
+            return;
+        }
+        isNavigatingToGame = true;
+        
         try {
+            // Stop listener cũ vì sẽ tạo phòng mới sau khi game end
             stopListening();
             
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/vuatiengvietpj/PlayingRoom.fxml"));
@@ -629,12 +633,40 @@ public class PendingRoomController {
             javafx.scene.Scene scene = new javafx.scene.Scene(root);
             
             Object controller = loader.getController();
+            PlayingRoomController prc = null;
             if (controller instanceof PlayingRoomController) {
-                PlayingRoomController prc = (PlayingRoomController) controller;
+                prc = (PlayingRoomController) controller;
                 prc.setCurrentUserId(currentUserId);
                 
-                // Lấy Stage từ scene hiện tại
-                javafx.stage.Stage stage = null;
+                // Pass primaryStage - ưu tiên primaryStage, fallback sang scene.getWindow()
+                javafx.stage.Stage stageToPass = primaryStage;
+                if (stageToPass == null) {
+                    System.out.println("[PendingRoom] primaryStage is null, getting from scene...");
+                    try {
+                        javafx.stage.Window w = btnOutRoom.getScene().getWindow();
+                        if (w instanceof javafx.stage.Stage) {
+                            stageToPass = (javafx.stage.Stage) w;
+                            System.out.println("[PendingRoom] Got stage from scene: " + (stageToPass != null ? "OK" : "NULL"));
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[PendingRoom] Error getting stage from scene: " + e.getMessage());
+                    }
+                }
+                
+                if (stageToPass != null) {
+                    prc.setPrimaryStage(stageToPass);
+                    System.out.println("[PendingRoom] Passed primaryStage to PlayingRoomController");
+                } else {
+                    System.err.println("[PendingRoom] WARNING: Cannot find stage to pass to PlayingRoomController");
+                }
+                
+                // Đánh dấu hiển thị countdown khi load
+                prc.setShowCountdownOnLoad(true);
+            }
+            
+            // Cập nhật scene TRƯỚC - attach scene vào stage
+            javafx.stage.Stage stage = primaryStage;
+            if (stage == null) {
                 try {
                     javafx.stage.Window w = btnOutRoom.getScene().getWindow();
                     if (w instanceof javafx.stage.Stage) {
@@ -643,33 +675,18 @@ public class PendingRoomController {
                 } catch (Exception e) {
                     System.err.println("PendingRoomController - Không thể lấy Stage: " + e.getMessage());
                 }
-                
-                if (stage != null) {
-                    prc.setPrimaryStage(stage);
-                }
-                
-                // Đánh dấu hiển thị countdown khi load
-                prc.setShowCountdownOnLoad(true);
-                
-                // Set room - sẽ trigger countdown
-                prc.setRoom(room);
-            }
-            
-            // Cập nhật scene
-            javafx.stage.Stage stage = null;
-            try {
-                javafx.stage.Window w = btnOutRoom.getScene().getWindow();
-                if (w instanceof javafx.stage.Stage) {
-                    stage = (javafx.stage.Stage) w;
-                }
-            } catch (Exception e) {
-                System.err.println("PendingRoomController - Không thể lấy Stage: " + e.getMessage());
             }
             
             if (stage != null) {
                 stage.setScene(scene);
                 stage.setTitle("Chơi game - Phòng #" + room.getId());
                 stage.show();
+                
+                // GỌI setRoom() SAU KHI scene đã attach vào stage
+                if (prc != null) {
+                    prc.setRoom(room);
+                    System.out.println("[PendingRoom] Called setRoom() after scene attached");
+                }
             }
         } catch (java.io.IOException e) {
             System.err.println("PendingRoomController.navigateToPlayingRoom - Lỗi: " + e.getMessage());

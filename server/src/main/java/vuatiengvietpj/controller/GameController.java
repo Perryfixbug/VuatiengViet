@@ -3,6 +3,7 @@ package vuatiengvietpj.controller;
 import java.io.IOException;
 import java.net.Socket;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -11,9 +12,10 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
 
-import vuatiengvietpj.DAO.ChallengePackDAO;
-import vuatiengvietpj.DAO.DictionaryDAO;
-import vuatiengvietpj.DAO.RoomDAO;
+import vuatiengvietpj.dao.ChallengePackDAO;
+import vuatiengvietpj.dao.DictionaryDAO;
+import vuatiengvietpj.dao.RoomDAO;
+import vuatiengvietpj.model.ChallengePack;
 import vuatiengvietpj.model.Player;
 import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
@@ -102,6 +104,12 @@ public class GameController extends ServerController {
             
             // Lấy lại room với challenge pack đã được gán
             room = roomDAO.getRoomById(roomId);
+            
+            // Broadcast room update để tất cả client biết game đã bắt đầu
+            if (room != null) {
+                vuatiengvietpj.util.RoomUpdateManager.getInstance().broadcastUpdate(roomId, room);
+                System.out.println("GameController.START: Broadcasted game start to all members - roomId=" + roomId);
+            }
             
             // Trả về room với challenge pack để gửi cho tất cả client
             return createSuccessResponse(module, "START", gson.toJson(room));
@@ -250,10 +258,19 @@ public class GameController extends ServerController {
             // Kiểm tra room có tồn tại không
             Room room = roomDAO.getRoomById(roomId);
             if (room == null) {
-                return createErrorResponse(module, "END", "Phòng không tồn tại");
+                // Phòng đã bị xóa (có thể do client khác đã END trước)
+                // Không coi là lỗi, trả về success
+                System.out.println("GameController.END: Room already deleted - roomId=" + roomId);
+                return createSuccessResponse(module, "END", "Game đã kết thúc");
             }
             
-            // Kiểm tra room đang ở trạng thái playing
+            // Nếu phòng đã pending rồi (client khác đã END trước), vẫn cho phép
+            if ("pending".equals(room.getStatus())) {
+                System.out.println("GameController.END: Room already ended - roomId=" + roomId);
+                return createSuccessResponse(module, "END", "Game đã kết thúc");
+            }
+            
+            // Chỉ xử lý nếu phòng đang "playing"
             if (!"playing".equals(room.getStatus())) {
                 return createErrorResponse(module, "END", "Phòng không ở trạng thái playing");
             }
@@ -261,10 +278,58 @@ public class GameController extends ServerController {
             // Broadcast scoreboard lần cuối trước khi kết thúc game
             broadcastScoreBoard(roomId);
             
-            // Chuyển room thành trạng thái pending
-            roomDAO.updateRoom(roomId, null, "pending", null);
+            // LƯU thông tin phòng cũ (trước khi xóa)
+            Room oldRoom = roomDAO.getRoomById(roomId);
+            if (oldRoom == null) {
+                return createErrorResponse(module, "END", "Không tìm thấy phòng");
+            }
             
-            String result = "Game đã kết thúc thành công";
+            Long ownerId = oldRoom.getOwnerId();
+            int maxPlayer = oldRoom.getMaxPlayer();
+            ChallengePack cp = oldRoom.getCp();
+            List<Player> players = new ArrayList<>(oldRoom.getPlayers()); // Copy để tránh reference
+            
+            System.out.println("GameController.END: Saved room info - owner=" + ownerId + 
+                             ", maxPlayer=" + maxPlayer + ", players=" + players.size());
+            
+            // XÓA phòng cũ
+            roomDAO.deleteRoom(roomId);
+            System.out.println("GameController.END: Deleted old room " + roomId);
+            
+            // TẠO phòng mới với thông tin đã lưu
+            // Generate new ID (chỉ lấy 8 chữ số)
+            long timestamp = System.currentTimeMillis() + new java.util.Random().nextInt(1000);
+            Long newRoomId = (long) ((int) (timestamp % 100000000));
+            Room newRoom = new Room(newRoomId, ownerId, maxPlayer, Instant.now(), "pending", cp, new ArrayList<>());
+            
+            // THÊM lại players vào phòng mới (reset điểm về 0)
+            for (Player p : players) {
+                Player newPlayer = new Player();
+                newPlayer.setUserId(p.getUserId());
+                newPlayer.setName(p.getName());
+                newPlayer.setRoomId(newRoomId);
+                newPlayer.setScore(0); // Reset score
+                newRoom.getPlayers().add(newPlayer);
+            }
+            
+            // Lưu phòng mới vào DB
+            roomDAO.createRoom(newRoom);
+            
+            System.out.println("GameController.END: Created new room " + newRoom.getId() + 
+                             " with " + newRoom.getPlayers().size() + " players");
+            
+            // BROADCAST phòng MỚI đến listeners của phòng CŨ (TRƯỚC KHI remove listeners)
+            Room finalRoom = roomDAO.getRoomById(newRoom.getId());
+            vuatiengvietpj.util.RoomUpdateManager.getInstance().broadcastUpdate(roomId, finalRoom);
+            System.out.println("GameController.END: Broadcasted new room to old room listeners");
+            
+            // SAU ĐÓ mới stop listening cho phòng cũ - remove tất cả listeners
+            for (Player p : players) {
+                vuatiengvietpj.util.RoomUpdateManager.getInstance().removeListener(roomId, p.getUserId());
+            }
+            
+            // Trả về ID phòng mới cho client (CHỦ PHÒNG)
+            String result = newRoom.getId().toString();
             return createSuccessResponse(module, "END", result);
         } catch (NumberFormatException e) {
             return createErrorResponse(module, "END", "Dữ liệu không hợp lệ: " + e.getMessage());

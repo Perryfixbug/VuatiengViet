@@ -30,6 +30,7 @@ public class ServerApp {
                     try {
                         System.out.println("Creating UserController");
                         UserController uc = new UserController(clientSocket);
+                        uc.setStreams(this.in, this.out); // Tái sử dụng streams
                         System.out.println("UserController created, calling process");
                         Response resp = uc.process(request);
                         System.out.println("UserController process done: " + resp);
@@ -43,6 +44,7 @@ public class ServerApp {
                     try {
                         System.out.println("Creating RoomController");
                         RoomController rc = new RoomController(clientSocket);
+                        rc.setStreams(this.in, this.out); // Tái sử dụng streams của DelegatingController
                         System.out.println("RoomController created, calling process");
                         Response resp = rc.process(request);
                         System.out.println("RoomController process done: " + resp);
@@ -56,6 +58,7 @@ public class ServerApp {
                     try {
                         System.out.println("Creating GameController");
                         GameController gc = new GameController(clientSocket);
+                        gc.setStreams(this.in, this.out); // Tái sử dụng streams
                         System.out.println("GameController created, calling process");
                         Response resp = gc.process(request);
                         System.out.println("GameController process done: " + resp);
