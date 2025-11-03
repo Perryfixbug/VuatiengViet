@@ -7,112 +7,151 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class ChallengePackGenerator {
-    static final String URL = ConfigManager.get("DB_URL");
+    static final String URL = ConfigManager.get("DB_URL") +
+        "?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci";
     static final String USER = ConfigManager.get("DB_USER");
     static final String PASS = ConfigManager.get("DB_PASS");
 
-    static final int MIN_ANSWER_COUNT = 10;
+    static final int MIN_ANSWER_COUNT = 10;   // ít nhất bao nhiêu từ hợp lệ để chấp nhận bộ đề
+    static final int TARGET_PACK = 90;        // số bộ đề cần sinh
+    static final int MIN_QUIZ_LEN = 5;        // độ dài quiz tối thiểu
+    static final int MAX_QUIZ_LEN = 8;        // độ dài quiz tối đa
+    static final int MAX_ATTEMPTS = 20000;    // số lần thử sinh (tránh vòng vô hạn)
+
+    static final Set<Character> INVALID_CHARS = Set.of('f', 'j', 'w', 'z');
 
     public static void main(String[] args) throws Exception {
-        Connection conn = DriverManager.getConnection(URL, USER, PASS);
-        Statement st = conn.createStatement();
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASS)) {
+            conn.setAutoCommit(true);
 
-        // Lấy toàn bộ từ điển ra RAM
-        List<String> dictionary = new ArrayList<>();
-        ResultSet rs = st.executeQuery("SELECT word FROM Dictionary WHERE CHAR_LENGTH(word) BETWEEN 3 AND 8");
-        while (rs.next()) dictionary.add(rs.getString("word").toLowerCase());
-        rs.close();
-
-        // Chuẩn bị bản không dấu để so sánh
-        List<String> dictionaryNoAccent = dictionary.stream()
-                .map(w -> removeAccent(w).replaceAll("\\s+", ""))
-                .collect(Collectors.toList());
-
-        Random random = new Random();
-        int packCount = 0;
-
-        for (int i = 0; i < 2000 && packCount < 90; i++) { // sinh pack
-            String baseWord = dictionary.get(random.nextInt(dictionary.size()));
-            String baseNoAccent = removeAccent(baseWord).replaceAll("\\s+", "").trim();
-
-            String quizz = shuffleAndAddLetters(baseNoAccent, random);
-
-            // Lọc ra các từ hợp lệ dựa vào quizz không dấu
-            List<String> validWords = new ArrayList<>();
-            for (int j = 0; j < dictionary.size(); j++) {
-                String noAccent = dictionaryNoAccent.get(j);
-                if (canForm(noAccent, quizz)) validWords.add(dictionary.get(j));
+            // 1️⃣ Tải toàn bộ từ điển
+            List<String> dictionary = new ArrayList<>();
+            try (Statement st = conn.createStatement();
+                 ResultSet rs = st.executeQuery("SELECT word FROM dictionary WHERE CHAR_LENGTH(word) BETWEEN 2 AND 20")) {
+                while (rs.next()) dictionary.add(rs.getString("word").toLowerCase());
             }
 
-            if (validWords.size() >= MIN_ANSWER_COUNT) { // ít nhất n từ có thể tạo
-                packCount++;
-                int level = quizz.length() <= 6 ? 1 : (quizz.length() <= 8 ? 2 : 3);
+            if (dictionary.isEmpty()) {
+                System.err.println("❌ Dictionary rỗng. Dừng.");
+                return;
+            }
 
-                PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO ChallengePack (quizz, level) VALUES (?, ?)",
-                    Statement.RETURN_GENERATED_KEYS
-                );
-                ps.setString(1, quizz);
-                ps.setInt(2, level);
-                ps.executeUpdate();
+            // 2️⃣ Chuẩn hóa từ không dấu
+            List<String> dictNoAccent = dictionary.stream()
+                    .map(ChallengePackGenerator::normalizeWord)
+                    .collect(Collectors.toList());
 
-                ResultSet key = ps.getGeneratedKeys();
-                key.next();
-                int challengeId = key.getInt(1);
+            System.out.println("✅ Đã tải " + dictionary.size() + " từ từ điển.");
+            System.out.println("🚀 Bắt đầu sinh " + TARGET_PACK + " bộ đề...");
 
-                PreparedStatement pa = conn.prepareStatement(
-                    "INSERT INTO Answer (challengePackId, dictionaryWord) VALUES (?, ?)"
-                );
-                for (String w : validWords) {
-                    pa.setInt(1, challengeId);
-                    pa.setString(2, w); // từ gốc có dấu
-                    pa.addBatch();
+            Random random = new Random();
+            Set<String> usedQuiz = new HashSet<>();
+            int packCount = 0;
+            int attempts = 0;
+
+            while (packCount < TARGET_PACK && attempts < MAX_ATTEMPTS) {
+                attempts++;
+
+                // 3️⃣ Sinh quiz ngẫu nhiên (chỉ dùng ký tự hợp lệ)
+                String quiz = randomQuiz(random);
+                if (usedQuiz.contains(quiz)) continue;
+                usedQuiz.add(quiz);
+
+                // 4️⃣ Lọc đáp án hợp lệ: có thể tạo từ quiz
+                List<String> valid = new ArrayList<>();
+                for (int i = 0; i < dictionary.size(); i++) {
+                    String wordNorm = dictNoAccent.get(i);
+                    if (wordNorm.isEmpty()) continue;
+                    if (canForm(wordNorm, quiz)) valid.add(dictionary.get(i));
                 }
-                pa.executeBatch();
 
-                System.out.printf("%d. %s (%d từ)\n", packCount, quizz, validWords.size());
+                // 5️⃣ Nếu đạt yêu cầu thì lưu vào DB
+                if (valid.size() >= MIN_ANSWER_COUNT) {
+                    packCount++;
+                    int level = getLevel(quiz.length());
+                    savePack(conn, quiz, level, valid);
+                    System.out.printf("✅ %2d. Quiz: %-8s (%3d đáp án)\n", packCount, quiz, valid.size());
+                }
+
+                if (attempts % 2000 == 0) {
+                    System.out.println("⏱ vẫn đang sinh... attempts=" + attempts + ", packs=" + packCount);
+                }
+            }
+
+            System.out.println("🎉 Hoàn thành: sinh được " + packCount + " bộ đề.");
+            if (packCount < TARGET_PACK) {
+                System.out.println("⚠️ Gợi ý: nếu không đủ, giảm MIN_ANSWER_COUNT hoặc tăng MAX_ATTEMPTS hoặc giảm MIN_QUIZ_LEN.");
             }
         }
-
-        conn.close();
-        System.out.println("Hoàn thành sinh challenge pack!");
     }
 
-    // Sinh chuỗi quiz (không dấu)
-    static String shuffleAndAddLetters(String base, Random r) {
-        String letters = "abcdefghijklmnopqrstuvwxyz";
-        Set<Character> set = new HashSet<>();
-        for (char c : base.toCharArray()) {
-            if (Character.isLetter(c)) set.add(c); // bỏ qua dấu cách hoặc ký tự khác
+    // === Lưu pack & đáp án ===
+    static void savePack(Connection conn, String quiz, int level, List<String> validWords) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO challengepack (quizz, level) VALUES (?, ?)",
+                Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, quiz);
+            ps.setInt(2, level);
+            ps.executeUpdate();
+
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (!rs.next()) throw new SQLException("Không lấy được generated key");
+                int id = rs.getInt(1);
+
+                try (PreparedStatement pa = conn.prepareStatement(
+                        "INSERT IGNORE INTO answer (challengePackId, dictionaryWord) VALUES (?, ?)")) {
+                    for (String w : validWords) {
+                        pa.setInt(1, id);
+                        pa.setString(2, w);
+                        pa.addBatch();
+                    }
+                    pa.executeBatch();
+                }
+            }
         }
-        while (set.size() < base.length() + 2) {
-            set.add(letters.charAt(r.nextInt(letters.length())));
-        }
-        List<Character> list = new ArrayList<>(set);
-        Collections.shuffle(list);
-        StringBuilder sb = new StringBuilder();
-        for (char c : list) sb.append(c);
-        return sb.toString().replaceAll("\\s+", ""); // đảm bảo không có space
     }
 
+    // === Sinh quiz chỉ chứa chữ hợp lệ (ko f, j, w, z) ===
+    static String randomQuiz(Random r) {
+        String letters = "abcdeghiklmnopqrstuvxy"; // bỏ f, j, w, z
+        int len = MIN_QUIZ_LEN + r.nextInt(MAX_QUIZ_LEN - MIN_QUIZ_LEN + 1);
+        StringBuilder sb = new StringBuilder(len);
+        for (int i = 0; i < len; i++) {
+            sb.append(letters.charAt(r.nextInt(letters.length())));
+        }
+        return sb.toString();
+    }
 
-    // Kiểm tra xem word có thể tạo từ quizz không (không dấu)
-    static boolean canForm(String word, String quizz) {
-        Map<Character, Long> wCount = word.chars().mapToObj(c -> (char) c)
-            .collect(Collectors.groupingBy(c -> c, Collectors.counting()));
-        Map<Character, Long> qCount = quizz.chars().mapToObj(c -> (char) c)
-            .collect(Collectors.groupingBy(c -> c, Collectors.counting()));
-        for (var e : wCount.entrySet()) {
-            if (qCount.getOrDefault(e.getKey(), 0L) < e.getValue()) return false;
+    // === Kiểm tra word có thể được tạo từ quiz ===
+    static boolean canForm(String word, String quiz) {
+        int[] q = new int[26];
+        for (char c : quiz.toCharArray()) {
+            if (c >= 'a' && c <= 'z') q[c - 'a']++;
+        }
+        for (char c : word.toCharArray()) {
+            if (c < 'a' || c > 'z') return false;
+            if (INVALID_CHARS.contains(c)) return false;
+            if (q[c - 'a'] <= 0) return false;
+            q[c - 'a']--;
         }
         return true;
     }
 
-    // Hàm xóa dấu tiếng Việt
-    static String removeAccent(String s) {
+    // === Chuẩn hóa bỏ dấu ===
+    static String normalizeWord(String s) {
+        if (s == null) return "";
         String temp = Normalizer.normalize(s, Normalizer.Form.NFD);
-        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
-        temp = pattern.matcher(temp).replaceAll("");
-        return temp.replace("đ", "d").replace("Đ", "D");
+        temp = Pattern.compile("\\p{InCombiningDiacriticalMarks}+").matcher(temp).replaceAll("");
+        temp = temp.replace('đ', 'd').replace('Đ', 'D');
+        temp = temp.toLowerCase();
+        temp = temp.replaceAll("[^a-z]", "");
+        return temp;
+    }
+
+    // === Đánh cấp độ theo độ dài quiz ===
+    static int getLevel(int len) {
+        if (len <= 5) return 1;
+        else if (len <= 7) return 2;
+        else return 3;
     }
 }
