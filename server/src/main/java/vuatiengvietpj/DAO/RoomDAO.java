@@ -135,17 +135,18 @@ public class RoomDAO extends DAO {
                 throw new SQLException("Creating room failed, no rows affected.");
             }
             
-            // Insert owner into player table so DB state reflects in-memory room
-            if (room.getPlayers() != null) {
+            // Insert players into player table so DB state reflects in-memory room
+            if (room.getPlayers() != null && !room.getPlayers().isEmpty()) {
                 for (Player p : room.getPlayers()) {
                     if (p != null && p.getUserId() != 0) {
-                        addPlayerToRoom(room.getId(), p.getUserId());
+                        // Preserve player's existing score when inserting
+                        addPlayerToRoomWithScore(room.getId(), p.getUserId(), p.getScore() != null ? p.getScore() : 0);
                     }
                 }
             } else {
-                // if no players provided, still add owner
+                // if no players provided, still add owner with default score 0
                 if (room.getOwnerId() != 0) {
-                    addPlayerToRoom(room.getId(), room.getOwnerId());
+                    addPlayerToRoomWithScore(room.getId(), room.getOwnerId(), 0);
                 }
             }
         } catch (SQLException e) {
@@ -222,14 +223,15 @@ public class RoomDAO extends DAO {
     
     // Thêm người chơi vào phòng
     public void addPlayerToRoom(Integer roomId, Integer userId) {
-        String checkSql = "SELECT COUNT(*) FROM player WHERE userId = ? AND roomId = ?";
-        String insertSql = "INSERT INTO player (userId, roomId, score) VALUES (?, ?, 0)";
+        String checkSql = "SELECT score FROM player WHERE userId = ? AND roomId = ?";
+        String insertSql = "INSERT INTO player (userId, roomId, score) VALUES (?, ?, ?)";
         try (PreparedStatement checkPs = con.prepareStatement(checkSql)) {
             checkPs.setInt(1, userId);
             checkPs.setInt(2, roomId);
             try (ResultSet rs = checkPs.executeQuery()) {
-                if (rs.next() && rs.getInt(1) > 0) {
-                    System.out.println("Player already exists in the room.");
+                if (rs.next()) {
+                    // Player đã tồn tại trong phòng - GIỮ NGUYÊN điểm (không làm gì)
+                    System.out.println("Player already exists in the room with score: " + rs.getInt("score"));
                     return;
                 }
             }
@@ -238,10 +240,44 @@ public class RoomDAO extends DAO {
             return;
         }
 
+        // Player chưa tồn tại - thêm mới với score = 0
         try (PreparedStatement insertPs = con.prepareStatement(insertSql)) {
             insertPs.setInt(1, userId);
             insertPs.setInt(2, roomId);
+            insertPs.setInt(3, 0); // Score mặc định = 0 cho player mới
             insertPs.executeUpdate();
+            System.out.println("Added new player to room with score = 0");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Thêm người chơi với score chỉ định (dùng khi tạo phòng và cần giữ điểm hiện tại)
+    public void addPlayerToRoomWithScore(Integer roomId, Integer userId, Integer score) {
+        String checkSql = "SELECT score FROM player WHERE userId = ? AND roomId = ?";
+        String insertSql = "INSERT INTO player (userId, roomId, score) VALUES (?, ?, ?)";
+        try (PreparedStatement checkPs = con.prepareStatement(checkSql)) {
+            checkPs.setInt(1, userId);
+            checkPs.setInt(2, roomId);
+            try (ResultSet rs = checkPs.executeQuery()) {
+                if (rs.next()) {
+                    // Player đã tồn tại trong phòng - GIỮ NGUYÊN điểm (không làm gì)
+                    System.out.println("Player already exists in the room with score: " + rs.getInt("score"));
+                    return;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        // Player chưa tồn tại - thêm mới với score truyền vào
+        try (PreparedStatement insertPs = con.prepareStatement(insertSql)) {
+            insertPs.setInt(1, userId);
+            insertPs.setInt(2, roomId);
+            insertPs.setInt(3, score != null ? score : 0);
+            insertPs.executeUpdate();
+            System.out.println("Added new player to room with score = " + (score != null ? score : 0));
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -274,6 +310,24 @@ public class RoomDAO extends DAO {
                     System.out.println("RoomDAO.updatePlayerScore: userId=" + userId + ", roomId=" + roomId + 
                                      ", oldScore=" + currentScore + ", addedScore=" + newScore + ", newScore=" + updatedScore);
                 }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Đặt điểm tuyệt đối cho player trong room (dùng để reset khi start game)
+    public void setPlayerScore(Integer roomId, Integer userId, Integer score) {
+        String updateSql = "UPDATE player SET score = ? WHERE userId = ? AND roomId = ?";
+        try (PreparedStatement updatePs = con.prepareStatement(updateSql)) {
+            updatePs.setInt(1, score != null ? score : 0);
+            updatePs.setInt(2, userId);
+            updatePs.setInt(3, roomId);
+            int affected = updatePs.executeUpdate();
+            if (affected > 0) {
+                System.out.println("RoomDAO.setPlayerScore: Set score=" + (score != null ? score : 0) + " for userId=" + userId + ", roomId=" + roomId);
+            } else {
+                System.out.println("RoomDAO.setPlayerScore: No rows updated for userId=" + userId + ", roomId=" + roomId);
             }
         } catch (SQLException e) {
             e.printStackTrace();

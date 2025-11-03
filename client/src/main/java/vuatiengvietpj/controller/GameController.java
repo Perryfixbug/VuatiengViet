@@ -13,7 +13,7 @@ public class GameController extends ClientController implements AutoCloseable {
     private String module = "GAME";
     private Gson gson;
     // Danh sách SubmitResult (chỉ đáp án đúng) cho từng user (theo userId) - chỉ lưu ở client
-    private static java.util.Map<Integer, java.util.List<SubmitResult>> submittedResultsByUser = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<Integer, java.util.List<SubmitResult>> localSubmittedCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     public GameController(String host, Integer port) throws IOException {
         super(host, port);
@@ -75,28 +75,25 @@ public class GameController extends ClientController implements AutoCloseable {
                 return new SubmitResult(false, null, 0, 0, "Đáp án không được rỗng");
             }
             
-            // Kiểm tra xem từ đã được submit chưa bằng cách so sánh với các SubmitResult đã lưu của user
-            java.util.List<SubmitResult> submittedResults = submittedResultsByUser.get(userId);
-            if (submittedResults != null && !submittedResults.isEmpty()) {
-                String answerLower = answer.trim().toLowerCase();
-                boolean alreadySubmitted = submittedResults.stream()
-                        .filter(result -> result.isSuccess()) // Chỉ kiểm tra các đáp án đúng
-                        .anyMatch(result -> result.getMatchedAnswer() != null && 
-                                result.getMatchedAnswer().toLowerCase().equals(answerLower));
-                
-                if (alreadySubmitted) {
-                    // Từ này đã được submit trước đó - không gửi request lên server
-                    return new SubmitResult(false, null, 0, 0, "Bạn đã đoán từ này rồi");
-                }
+            // 1. Check local cache (for UX)
+            if (isInLocalCache(userId, answer)) {
+                return new SubmitResult(false, null, 0, 0, "Bạn đã đoán từ này rồi");
             }
             
-            // Từ chưa được submit - gửi request lên server
+            // 2. Send to server (source of truth)
             String data = roomId + "," + userId + "," + answer;
             Response response = sendAndReceive(module, "SUBMIT", data);
             
             if (response != null && response.isSuccess()) {
+                // Check if response is JSON (broadcast message) - skip it
+                String responseData = response.getData();
+                if (responseData != null && (responseData.trim().startsWith("{") || responseData.trim().startsWith("["))) {
+                    System.out.println("GameController: Received JSON broadcast, ignoring as SUBMIT response");
+                    return new SubmitResult(false, null, 0, 0, "Nhận được broadcast thay vì response");
+                }
+                
                 // Parse kết quả: "matchedAnswer,frequency,level"
-                String[] parts = response.getData().split(",");
+                String[] parts = responseData.split(",");
                 if (parts.length >= 3) {
                     String matchedAnswer = parts[0];
                     Integer frequency = Integer.parseInt(parts[1]);
@@ -120,8 +117,8 @@ public class GameController extends ClientController implements AutoCloseable {
                     // Tạo SubmitResult cho đáp án đúng
                     SubmitResult successResult = new SubmitResult(true, matchedAnswer, frequency, level, points);
                     
-                    // Lưu SubmitResult (chỉ đáp án đúng) vào danh sách của user (theo userId) - chỉ lưu ở client
-                    submittedResultsByUser.computeIfAbsent(userId, k -> new java.util.ArrayList<>()).add(successResult);
+                    // 3. Update local cache nếu thành công
+                    addToLocalCache(userId, successResult);
                     
                     System.out.println("GameController: Đã lưu SubmitResult cho từ '" + matchedAnswer + "' vào danh sách của user " + userId);
                     
@@ -139,17 +136,18 @@ public class GameController extends ClientController implements AutoCloseable {
             e.printStackTrace();
             return new SubmitResult(false, null, 0, 0, "Lỗi: " + e.getMessage());
         }
+        
         return new SubmitResult(false, null, 0, 0, "Lỗi không xác định");
     }
     
     // Lấy danh sách SubmitResult (chỉ đáp án đúng) của một user (chỉ lưu ở client)
     public static java.util.List<SubmitResult> getUserSubmittedResults(Integer userId) {
-        return submittedResultsByUser.getOrDefault(userId, new java.util.ArrayList<>());
+        return localSubmittedCache.getOrDefault(userId, new java.util.ArrayList<>());
     }
     
     // Xóa danh sách SubmitResult của một user (khi logout hoặc reset)
     public static void clearUserSubmittedResults(Integer userId) {
-        submittedResultsByUser.remove(userId);
+        localSubmittedCache.remove(userId);
     }
     
     // Lấy số lượng đáp án đúng của một user
@@ -229,22 +227,23 @@ public class GameController extends ClientController implements AutoCloseable {
         }
     }
 
-    // Gửi điểm đã tính lên server để cập nhật vào database
-    public Response updateScore(Integer roomId, Integer userId, Integer points) {
-        try {
-            String data = roomId + "," + userId + "," + points;
-            Response response = sendAndReceive(module, "UPDATE", data);
-            if (response != null && response.isSuccess()) {
-                System.out.println("GameController: Đã cập nhật điểm " + points + " cho user " + userId + " trong room " + roomId);
-            } else {
-                System.err.println("GameController: Lỗi khi cập nhật điểm: " + (response != null ? response.getData() : "Không nhận được phản hồi"));
+    // Gửi điểm đã tính lên server để cập nhật vào database (ASYNC - không chờ response)
+    public void updateScore(Integer roomId, Integer userId, Integer points) {
+        // Chạy trong thread riêng để không block luồng submit
+        new Thread(() -> {
+            try {
+                String data = roomId + "," + userId + "," + points;
+                Response response = sendAndReceive(module, "UPDATE", data);
+                if (response != null && response.isSuccess()) {
+                    System.out.println("GameController: Đã cập nhật điểm " + points + " cho user " + userId + " trong room " + roomId);
+                } else {
+                    System.err.println("GameController: Lỗi khi cập nhật điểm: " + (response != null ? response.getData() : "Không nhận được phản hồi"));
+                }
+            } catch (Exception e) {
+                System.err.println("Error updating score: " + e.getMessage());
+                e.printStackTrace();
             }
-            return response;
-        } catch (Exception e) {
-            System.err.println("Error updating score: " + e.getMessage());
-            e.printStackTrace();
-        }
-        return null;
+        }, "UpdateScore-Thread").start();
     }
 
     // Parse ScoreBoard từ JSON response
@@ -382,5 +381,23 @@ public class GameController extends ClientController implements AutoCloseable {
             super.close();
         } catch (Exception ignored) {
         }
+    }
+    
+    // Kiểm tra xem đáp án đã được submit chưa (trong cache địa phương)
+    private boolean isInLocalCache(Integer userId, String answer) {
+        java.util.List<SubmitResult> submittedResults = localSubmittedCache.get(userId);
+        if (submittedResults != null && !submittedResults.isEmpty()) {
+            String answerLower = answer.trim().toLowerCase();
+            return submittedResults.stream()
+                    .filter(result -> result.isSuccess()) // Chỉ kiểm tra các đáp án đúng
+                    .anyMatch(result -> result.getMatchedAnswer() != null && 
+                            result.getMatchedAnswer().toLowerCase().equals(answerLower));
+        }
+        return false;
+    }
+
+    // Thêm một SubmitResult vào cache địa phương
+    private void addToLocalCache(Integer userId, SubmitResult result) {
+        localSubmittedCache.computeIfAbsent(userId, k -> new java.util.ArrayList<>()).add(result);
     }
 }

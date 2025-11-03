@@ -10,7 +10,7 @@ import vuatiengvietpj.util.ConfigManager;
 import vuatiengvietpj.util.RedisManager;
 
 public class DictionaryDAO extends DAO {
-    private static final Integer DICT_TTL = ConfigManager.getInt("cache.dictionary.ttl", 3600);
+    private static final int DICT_TTL = ConfigManager.getInt("cache.dictionary.ttl", 3600);
 
     public List<Dictionary> getWordsByCategory(String category) {
         String cacheKey = "dictionary:category:" + category.toLowerCase();
@@ -52,7 +52,7 @@ public class DictionaryDAO extends DAO {
         return words;
     }
 
-    public List<Dictionary> getRandomWords(Integer limit) {
+    public List<Dictionary> getRandomWords(int limit) {
         List<Dictionary> words = new ArrayList<>();
         String sql = "SELECT id, word, meaning, category, difficulty FROM dictionary ORDER BY RAND() LIMIT ?";
 
@@ -136,6 +136,8 @@ public class DictionaryDAO extends DAO {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            closeConnection();
         }
         return 0;
     }

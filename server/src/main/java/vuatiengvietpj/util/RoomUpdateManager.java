@@ -154,4 +154,38 @@ public class RoomUpdateManager {
         ConcurrentHashMap<Integer, ObjectOutputStream> roomListeners = listeners.get(roomId);
         return roomListeners != null && roomListeners.containsKey(userId);
     }
+    
+    /**
+     * Broadcast scoreboard update tới tất cả listeners trong phòng
+     * @param roomId ID của phòng
+     * @param scoreBoard Object ScoreBoard đã được cập nhật
+     */
+    public void broadcastScoreBoard(Integer roomId, vuatiengvietpj.model.ScoreBoard scoreBoard) {
+        ConcurrentHashMap<Integer, ObjectOutputStream> roomListeners = listeners.get(roomId);
+        
+        if (roomListeners == null || roomListeners.isEmpty()) {
+            System.out.println("RoomUpdateManager: No listeners for scoreboard in room " + roomId);
+            return;
+        }
+        
+        Response update = new Response("GAME", "SCOREBOARD", gson.toJson(scoreBoard), true);
+        
+        System.out.println("RoomUpdateManager: Broadcasting SCOREBOARD to " + roomListeners.size() + 
+                         " listeners in room " + roomId);
+        
+        // Duyệt qua tất cả listeners
+        roomListeners.forEach((userId, out) -> {
+            try {
+                synchronized (out) { // Thread-safe write
+                    out.writeObject(update);
+                    out.flush();
+                }
+                System.out.println("  Sent SCOREBOARD to user=" + userId);
+            } catch (Exception e) {
+                System.err.println("  Failed to send SCOREBOARD to user=" + userId + ": " + e.getMessage());
+                // Xóa listener lỗi để tránh gửi lại
+                roomListeners.remove(userId);
+            }
+        });
+    }
 }

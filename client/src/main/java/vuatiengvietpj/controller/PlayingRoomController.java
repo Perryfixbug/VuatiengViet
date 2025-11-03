@@ -128,7 +128,7 @@ public class PlayingRoomController {
     private ObservableList<Player> scoreboardData = FXCollections.observableArrayList();
     
     // Timer state
-    private Integer remainingSeconds = 5;
+    private Integer remainingSeconds = 60;
     private boolean gameStarted = false;
     private boolean showCountdownOnLoad = false;
     
@@ -235,7 +235,7 @@ public class PlayingRoomController {
         }
         
         // Initialize timer display
-        lblTimer.setText("5s");
+        lblTimer.setText("60s");
     }
 
     private void updateChallengePack() {
@@ -331,6 +331,63 @@ public class PlayingRoomController {
         });
     }
 
+    /**
+     * Cập nhật điểm của player trực tiếp vào scoreboard (không cần refresh từ server)
+     * Gọi sau khi submit đáp án đúng để update real-time
+     */
+    private void updatePlayerScoreDirectly(Integer userId, Integer addedPoints) {
+        if (userId == null || scoreboardData.isEmpty()) return;
+        
+        Platform.runLater(() -> {
+            // Tìm player trong scoreboard
+            Player targetPlayer = null;
+            for (Player p : scoreboardData) {
+                if (p.getUserId().equals(userId)) {
+                    targetPlayer = p;
+                    break;
+                }
+            }
+            
+            if (targetPlayer != null) {
+                // Cập nhật điểm (cộng thêm), xử lý null-safe
+                Integer currentScore = (targetPlayer.getScore() != null) ? targetPlayer.getScore() : 0;
+                Integer newScore = currentScore + addedPoints;
+                targetPlayer.setScore(newScore);
+                
+                // Sort lại danh sách với null-safe comparison
+                List<Player> sortedPlayers = new ArrayList<>(scoreboardData);
+                sortedPlayers.sort((p1, p2) -> {
+                    Integer score1 = (p1.getScore() != null) ? p1.getScore() : 0;
+                    Integer score2 = (p2.getScore() != null) ? p2.getScore() : 0;
+                    return Integer.compare(score2, score1);
+                });
+                scoreboardData.setAll(sortedPlayers);
+                
+                // Update my score and rank
+                Integer myRank = -1;
+                Integer myScore = 0;
+                
+                for (Integer i = 0; i < sortedPlayers.size(); i++) {
+                    if (sortedPlayers.get(i).getUserId().equals(currentUserId)) {
+                        myRank = i + 1;
+                        myScore = (sortedPlayers.get(i).getScore() != null) ? sortedPlayers.get(i).getScore() : 0;
+                        break;
+                    }
+                }
+                
+                lblMyScore.setText("Điểm của bạn: " + myScore);
+                if (myRank > 0) {
+                    lblMyRank.setText("Hạng: " + myRank);
+                } else {
+                    lblMyRank.setText("Hạng: -");
+                }
+                
+                System.out.println("[PlayingRoom] Updated score directly: userId=" + userId + 
+                                 ", addedPoints=" + addedPoints + ", newScore=" + newScore);
+            }
+        });
+    }
+
     @FXML
     public void OnSubmitAnswer(ActionEvent event) {
         // Không cho submit nếu game chưa bắt đầu hoặc timer đã hết
@@ -389,10 +446,11 @@ public class PlayingRoomController {
                         // Update guessed words list
                         updateGuessedWords();
                         
-                        // Scoreboard will be updated via broadcast
+                        // CẬP NHẬT ĐIỂM TRỰC TIẾP vào scoreboard (không đợi polling)
+                        updatePlayerScoreDirectly(currentUserId, result.getPoints());
                     } else {
                         showMessage(result.getErrorMessage() != null ? result.getErrorMessage() : "Đáp án sai", true);
-                        lblStatusBar.setText("Đáp án không đúng");
+                        // Không hiển thị message lỗi trong status bar
                     }
                 });
             } catch (Exception e) {
@@ -415,6 +473,22 @@ public class PlayingRoomController {
     
     private void startListening() {
         stopListening();
+        
+        // SUBSCRIBE vào RoomManager để nhận broadcast
+        if (gameController != null && currentRoom != null) {
+            try {
+                Response subResponse = gameController.subscribe(currentRoom.getId());
+                if (subResponse != null && subResponse.isSuccess()) {
+                    System.out.println("[PlayingRoom] Subscribed to room " + currentRoom.getId());
+                } else {
+                    System.err.println("[PlayingRoom] Failed to subscribe: " + 
+                        (subResponse != null ? subResponse.getData() : "null response"));
+                }
+            } catch (Exception e) {
+                System.err.println("[PlayingRoom] Subscribe error: " + e.getMessage());
+            }
+        }
+        
         listening = true;
         
         listenerThread = new Thread(() -> {
@@ -456,10 +530,40 @@ public class PlayingRoomController {
     
     private void handleServerUpdate(Response response) {
         System.out.println("[PlayingRoom] ========== Received UPDATE ==========");
+        System.out.println("[PlayingRoom] Module: " + response.getmodule());
         System.out.println("[PlayingRoom] MaLenh: " + response.getMaLenh());
         System.out.println("[PlayingRoom] IsSuccess: " + response.isSuccess());
         System.out.println("[PlayingRoom] Data preview: " + (response.getData() != null ? response.getData().substring(0, Math.min(100, response.getData().length())) : "null"));
         
+        // XỬ LÝ SCOREBOARD BROADCAST (từ GAME module)
+        if ("GAME".equals(response.getmodule()) && "SCOREBOARD".equals(response.getMaLenh())) {
+            System.out.println("[PlayingRoom] Received SCOREBOARD broadcast");
+            try {
+                vuatiengvietpj.model.ScoreBoard scoreBoard = gson.fromJson(response.getData(), vuatiengvietpj.model.ScoreBoard.class);
+                if (scoreBoard != null && scoreBoard.getPlayer() != null) {
+                    Platform.runLater(() -> {
+                        // Cập nhật scoreboard từ broadcast
+                        scoreboardData.setAll(scoreBoard.getPlayer());
+                        // Tìm và update my score & rank
+                        for (int i = 0; i < scoreboardData.size(); i++) {
+                            Player p = scoreboardData.get(i);
+                            if (p.getUserId().equals(currentUserId)) {
+                                lblMyScore.setText("Điểm: " + (p.getScore() != null ? p.getScore() : 0));
+                                lblMyRank.setText("Hạng: " + (i + 1));
+                                break;
+                            }
+                        }
+                        System.out.println("[PlayingRoom] Scoreboard updated from broadcast, total players: " + scoreBoard.getPlayer().size());
+                    });
+                }
+            } catch (Exception e) {
+                System.err.println("[PlayingRoom] Error parsing SCOREBOARD: " + e.getMessage());
+                e.printStackTrace();
+            }
+            return; // Không xử lý thêm
+        }
+        
+        // XỬ LÝ ROOM UPDATE (từ ROOM module)
         if ("UPDATE".equals(response.getMaLenh())) {
             try {
                 Room updatedRoom = gson.fromJson(response.getData(), Room.class);
@@ -634,10 +738,10 @@ public class PlayingRoomController {
     private void startGameTimer() {
         stopGameTimer(); // Dừng timer cũ nếu có
         
-        remainingSeconds = 5;
+        remainingSeconds = 60;
         gameStarted = true;
-        lblTimer.setText("5s");
-        
+        lblTimer.setText("60s");
+
         timerExecutor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r);
             t.setDaemon(true);

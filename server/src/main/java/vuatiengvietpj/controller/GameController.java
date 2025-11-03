@@ -99,6 +99,16 @@ public class GameController extends ServerController {
             // Gán challenge pack vào room
             roomDAO.addChallengePackToRoom(roomId, randomCpId);
             
+            // RESET điểm về 0 cho tất cả players khi BẮT ĐẦU game
+            Room tempRoom = roomDAO.getRoomById(roomId);
+            if (tempRoom != null && tempRoom.getPlayers() != null) {
+                for (Player p : tempRoom.getPlayers()) {
+                    // Use setPlayerScore to set absolute value 0 (updatePlayerScore adds)
+                    roomDAO.setPlayerScore(roomId, p.getUserId(), 0);
+                }
+                System.out.println("GameController.START: Reset all players' scores to 0 in room " + roomId);
+            }
+            
             // Chuyển room thành trạng thái playing
             roomDAO.updateRoom(roomId, null, "playing", null);
             
@@ -235,7 +245,7 @@ public class GameController extends ServerController {
             // Cập nhật điểm của player trong database
             roomDAO.updatePlayerScore(roomId, userId, points);
             
-            // Broadcast scoreboard sau khi update score
+            // Broadcast scoreboard qua listener socket (không xung đột với request-response)
             broadcastScoreBoard(roomId);
             
             return createSuccessResponse(module, "UPDATE", "Đã cập nhật điểm thành công");
@@ -278,6 +288,14 @@ public class GameController extends ServerController {
             // Broadcast scoreboard lần cuối trước khi kết thúc game
             broadcastScoreBoard(roomId);
             
+            // CHỜ để đảm bảo broadcast đã được gửi và nhận đủ
+            try {
+                Thread.sleep(500); // Delay 500ms để broadcast kịp đến tất cả client
+                System.out.println("GameController.END: Waited 500ms for final scoreboard broadcast");
+            } catch (InterruptedException e) {
+                System.err.println("GameController.END: Sleep interrupted - " + e.getMessage());
+            }
+            
             // LƯU thông tin phòng cũ (trước khi xóa)
             Room oldRoom = roomDAO.getRoomById(roomId);
             if (oldRoom == null) {
@@ -302,13 +320,13 @@ public class GameController extends ServerController {
             Integer newRoomId = (Integer) ((int) (timestamp % 100000000));
             Room newRoom = new Room(newRoomId, ownerId, maxPlayer, Instant.now(), "pending", cp, new ArrayList<>());
             
-            // THÊM lại players vào phòng mới (reset điểm về 0)
+            // THÊM lại players vào phòng mới (GIỮ NGUYÊN điểm để hiển thị kết quả)
             for (Player p : players) {
                 Player newPlayer = new Player();
                 newPlayer.setUserId(p.getUserId());
                 newPlayer.setName(p.getName());
                 newPlayer.setRoomId(newRoomId);
-                newPlayer.setScore(0); // Reset score
+                newPlayer.setScore(p.getScore()); // GIỮ NGUYÊN điểm (không reset)
                 newRoom.getPlayers().add(newPlayer);
             }
             
@@ -318,10 +336,26 @@ public class GameController extends ServerController {
             System.out.println("GameController.END: Created new room " + newRoom.getId() + 
                              " with " + newRoom.getPlayers().size() + " players");
             
+            // CHỜ thêm để đảm bảo room mới đã được tạo hoàn toàn
+            try {
+                Thread.sleep(300); // Delay 300ms
+                System.out.println("GameController.END: Waited 300ms after creating new room");
+            } catch (InterruptedException e) {
+                System.err.println("GameController.END: Sleep interrupted - " + e.getMessage());
+            }
+            
             // BROADCAST phòng MỚI đến listeners của phòng CŨ (TRƯỚC KHI remove listeners)
             Room finalRoom = roomDAO.getRoomById(newRoom.getId());
             vuatiengvietpj.util.RoomUpdateManager.getInstance().broadcastUpdate(roomId, finalRoom);
             System.out.println("GameController.END: Broadcasted new room to old room listeners");
+            
+            // CHỜ để broadcast phòng mới kịp đến tất cả client
+            try {
+                Thread.sleep(500); // Delay 500ms để broadcast kịp
+                System.out.println("GameController.END: Waited 500ms for new room broadcast");
+            } catch (InterruptedException e) {
+                System.err.println("GameController.END: Sleep interrupted - " + e.getMessage());
+            }
             
             // SAU ĐÓ mới stop listening cho phòng cũ - remove tất cả listeners
             for (Player p : players) {
@@ -421,6 +455,7 @@ public class GameController extends ServerController {
     }
 
     // Broadcast scoreboard đến tất cả clients trong room
+    // SỬA: Dùng RoomUpdateManager thay vì RoomManager để broadcast qua listener socket
     public void broadcastScoreBoard(Integer  roomId) {
         Room room = roomDAO.getRoomById(roomId);
         if (room == null) {
@@ -429,7 +464,8 @@ public class GameController extends ServerController {
         
         ScoreBoard scoreBoard = createScoreBoardFromRoom(room);
         if (scoreBoard != null) {
-            RoomManager.getInstance().broadcastScoreBoard(roomId, scoreBoard);
+            // Broadcast ScoreBoard qua listener socket (không xung đột với request-response)
+            vuatiengvietpj.util.RoomUpdateManager.getInstance().broadcastScoreBoard(roomId, scoreBoard);
         }
     }
 }
