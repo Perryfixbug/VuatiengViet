@@ -1,16 +1,23 @@
 package vuatiengvietpj.controller;
 
-import java.util.*;
-import java.time.*;
 import java.io.IOException;
 import java.net.Socket;
-import com.google.gson.*;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializer;
 
 import vuatiengvietpj.dao.RoomDAO;
-import vuatiengvietpj.model.Room;
+import vuatiengvietpj.model.Player;
 import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
-import vuatiengvietpj.model.Player;
+import vuatiengvietpj.model.Room;
+import vuatiengvietpj.util.RoomUpdateManager;
 
 public class RoomController extends ServerController {
     private RoomDAO roomDAO;
@@ -40,6 +47,7 @@ public class RoomController extends ServerController {
             case "GETBYID" -> handleGetById(data);
             case "REFRESH" -> handleRefresh(data);
             case "KICK" -> handleKick(data);
+            case "LISTEN" -> handleListen(data);
             default -> createErrorResponse(module, request.getMaLenh(), "Hanh dong khong hop le");
         };
     }
@@ -51,7 +59,7 @@ public class RoomController extends ServerController {
             return createErrorResponse(module, "CREATE", "Du lieu khong hop le");
         }
         try {
-            Long ownerId = Long.parseLong(data);
+            Integer ownerId = Integer .parseInt(data);
             Room room = createRoom(ownerId);
             if (room != null) {
                 return createSuccessResponse(module, "CREATE", gson.toJson(room));
@@ -72,10 +80,13 @@ public class RoomController extends ServerController {
         }
 
         try {
-            Long roomId = Long.parseLong(parts[0]);
-            Long userId = Long.parseLong(parts[1]);
+            Integer roomId = Integer .parseInt(parts[0]);
+            Integer userId = Integer .parseInt(parts[1]);
             Room room = joinRoom(roomId, userId);
             if (room != null) {
+                // Broadcast update tới tất cả listeners trong phòng
+                RoomUpdateManager.getInstance().broadcastUpdate(roomId, room);
+                
                 return createSuccessResponse(module, "JOIN", gson.toJson(room));
             } else {
                 return createErrorResponse(module, "JOIN", "Tham gia phong that bai hoac phong da day");
@@ -93,10 +104,13 @@ public class RoomController extends ServerController {
             return createErrorResponse(module, "EDIT", "Du lieu khong hop le");
         }
         try {
-            Long roomId = Long.parseLong(parts[0]);
+            Integer roomId = Integer .parseInt (parts[0]);
             int maxPlayer = parts[1].isEmpty() ? 0 : Integer.parseInt(parts[1]);
             Room room = editRoom(roomId, maxPlayer);
             if (room != null) {
+                // Broadcast update tới tất cả listeners trong phòng
+                RoomUpdateManager.getInstance().broadcastUpdate(roomId, room);
+                
                 return createSuccessResponse(module, "EDIT", gson.toJson(room));
             } else {
                 return createErrorResponse(module, "EDIT", "Loi chinh sua phong");
@@ -114,9 +128,15 @@ public class RoomController extends ServerController {
             return createErrorResponse(module, "OUT", "Du lieu khong hop le");
         }
         try {
-            Long roomId = Long.parseLong(parts[0]);
-            Long userId = Long.parseLong(parts[1]);
+            Integer roomId = Integer.parseInt(parts[0]);
+            Integer userId = Integer.parseInt(parts[1]);
             Room room = outRoom(roomId, userId);
+            
+            // Broadcast update nếu phòng còn tồn tại và có người
+            if (room != null && room.getPlayers() != null && !room.getPlayers().isEmpty()) {
+                RoomUpdateManager.getInstance().broadcastUpdate(roomId, room);
+            }
+            
             return createSuccessResponse(module, "OUT", gson.toJson(room));
         } catch (NumberFormatException e) {
             return createErrorResponse(module, "OUT", "Du lieu khong hop le: " + e.getMessage());
@@ -140,7 +160,7 @@ public class RoomController extends ServerController {
             return createErrorResponse(module, "GETBYID", "Du lieu khong hop le");
         }
         try {
-            Long roomId = Long.parseLong(data);
+            Integer roomId = Integer .parseInt(data);
             Room room = roomDAO.getRoomById(roomId);
             List<Room> result = new ArrayList<>();
             if (room != null)
@@ -159,7 +179,7 @@ public class RoomController extends ServerController {
             return createErrorResponse(module, "REFRESH", "Du lieu khong hop le");
         }
         try {
-            Long roomId = Long.parseLong(parts[0]);
+            Integer roomId = Integer.parseInt(parts[0]);
             boolean isPlaying = Boolean.parseBoolean(parts[1]);
 
             Room room = roomDAO.getRoomById(roomId);
@@ -180,55 +200,173 @@ public class RoomController extends ServerController {
         if (parts.length < 3) {
             return createErrorResponse(module, "KICK", "Du lieu khong hop le");
         }
-        Long roomId = Long.parseLong(parts[0]);
-        Long userId = Long.parseLong(parts[1]);
-        Long kickedPlayerId = Long.parseLong(parts[2]);
+        Integer roomId = Integer.parseInt(parts[0]);
+        Integer userId = Integer.parseInt(parts[1]);
+        Integer kickedPlayerId = Integer.parseInt(parts[2]);
         Room room = kickPlayer(roomId, userId, kickedPlayerId);
         if (room != null) {
+            // Gửi KICKED message tới user bị kick
+            RoomUpdateManager.getInstance().sendToUser(roomId, kickedPlayerId, "KICKED", "Ban da bi kick");
+            
+            // Broadcast update tới những người còn lại
+            RoomUpdateManager.getInstance().broadcastUpdate(roomId, room);
+            
             return createSuccessResponse(module, "KICK", gson.toJson(room));
         } else {
             return createErrorResponse(module, "KICK", "Du lieu khong hop le hoac khong the kick");
         }
     }
+    
+    // Xử lý LISTEN - persistent connection để nhận updates
+    private Response handleListen(String data) {
+        // data format: "roomId,userId"
+        String[] parts = data.split(",");
+        if (parts.length < 2) {
+            return createErrorResponse(module, "LISTEN", "Du lieu khong hop le");
+        }
+        
+        try {
+            Integer roomId = Integer.parseInt(parts[0]);
+            Integer userId = Integer.parseInt(parts[1]);
+
+            System.out.println("RoomController.LISTEN: room=" + roomId + ", user=" + userId);
+            
+            // SỬA: Sử dụng lại ObjectOutputStream có sẵn từ ServerController
+            // KHÔNG tạo mới vì sẽ corrupt stream!
+            // ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
+            
+            // Đăng ký listener với out có sẵn
+            RoomUpdateManager.getInstance().addListener(roomId, userId, this.out);
+            
+            // Gửi initial room state ngay lập tức
+            Room room = roomDAO.getRoomById(roomId);
+            if (room != null) {
+                RoomUpdateManager.getInstance().broadcastUpdate(roomId, room);
+            }
+            
+            // GIỮ CONNECTION MỞ - đọc liên tục để phát hiện disconnect
+            try {
+                byte[] buffer = new byte[1];
+                while (true) {
+                    // Đọc để check connection alive (client sẽ không gửi gì)
+                    // Khi client disconnect, read() sẽ throw exception
+                    int result = clientSocket.getInputStream().read(buffer);
+                    if (result == -1) {
+                        // Client đóng connection gracefully
+                        System.out.println("RoomController.LISTEN: Client disconnected gracefully - user=" + userId);
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                // Client disconnect (network error, force close...)
+                System.out.println("RoomController.LISTEN: Client disconnected - user=" + userId + ", reason: " + e.getMessage());
+            } finally {
+                // Cleanup: xóa listener
+                RoomUpdateManager.getInstance().removeListener(roomId, userId);
+                System.out.println("RoomController.LISTEN: Cleanup done for user=" + userId);
+                
+                // AUTO-KICK: Tự động đuổi player khỏi phòng khi disconnect
+                // NHƯNG chỉ áp dụng khi:
+                // 1. Phòng đang ở trạng thái "pending" (chưa chơi)
+                // 2. User KHÔNG CÓ listener nào khác đang active (tránh kick khi đang navigate)
+                try {
+                    // Delay nhỏ để cho client kịp tạo listener mới khi navigate
+                    Thread.sleep(500);
+                    
+                    // Kiểm tra xem user có listener nào khác không
+                    boolean hasOtherListener = RoomUpdateManager.getInstance().hasListener(roomId, userId);
+                    
+                    if (hasOtherListener) {
+                        System.out.println("RoomController.LISTEN: User=" + userId + " has another active listener, skip auto-kick");
+                    } else {
+                        Room latestRoom = roomDAO.getRoomById(roomId);
+                        if (latestRoom != null && latestRoom.getPlayers() != null) {
+                            // CHỈ auto-kick khi phòng đang "pending" (chưa chơi)
+                            if ("pending".equals(latestRoom.getStatus())) {
+                                // Kiểm tra user còn trong phòng không
+                                boolean userInRoom = latestRoom.getPlayers().stream()
+                                    .anyMatch(p -> p.getUserId().equals(userId));
+                                
+                                if (userInRoom) {
+                                    System.out.println("RoomController.LISTEN: Auto-kicking user=" + userId + " from pending room=" + roomId);
+                                    
+                                    // Gọi logic OUT để remove player
+                                    Room updatedRoom = outRoom(roomId, userId);
+                                    
+                                    if (updatedRoom != null) {
+                                        // Broadcast update tới những người còn lại
+                                        RoomUpdateManager.getInstance().broadcastUpdate(roomId, updatedRoom);
+                                        System.out.println("RoomController.LISTEN: User kicked successfully");
+                                    } else {
+                                        // Room đã bị xóa (hết người)
+                                        System.out.println("RoomController.LISTEN: Room deleted (no players left)");
+                                    }
+                                }
+                            } else {
+                                System.out.println("RoomController.LISTEN: Room is playing, keep player=" + userId + " for reconnect");
+                            }
+                        }
+                    }
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                } catch (Exception cleanupError) {
+                    System.err.println("RoomController.LISTEN: Auto-kick failed: " + cleanupError.getMessage());
+                }
+            }
+            
+            // Không bao giờ return trong trường hợp bình thường (connection giữ mở)
+            return createSuccessResponse(module, "LISTEN", "Disconnected");
+            
+        } catch (NumberFormatException e) {
+            return createErrorResponse(module, "LISTEN", "Du lieu khong hop le: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("RoomController.LISTEN error: " + e.getMessage());
+            e.printStackTrace();
+            return createErrorResponse(module, "LISTEN", "Loi server: " + e.getMessage());
+        }
+    }
 
     // Các phương thức hỗ trợ
-    private Long generateRoomId() {
-        return System.currentTimeMillis() + new Random().nextInt(1000);
+    private Integer generateRoomId() {
+        long timstamp = System.currentTimeMillis() + new Random().nextInt(1000);
+        int roomId = (int) (timstamp % 100000000);
+        return (Integer) roomId;
     }
 
     public List<Room> getAllRooms() {
         return roomDAO.getAllRooms();
     }
 
-    public Room getRoomById(Long roomId) {
+    public Room getRoomById(Integer roomId) {
         return roomDAO.getRoomById(roomId);
     }
 
     // Thay đổi trạng thái phòng
-    public Room changeStatus(Long roomId, boolean isPlaying) {
+    public Room changeStatus(Integer roomId, boolean isPlaying) {
         // Đổi trạng thái hiện tại của phòng qua biến isPlaying
         Room room = roomDAO.getRoomById(roomId);
         if (room == null)
             return null;
-        String status = isPlaying ? "pending" : "playing";
+        // Sửa logic: isPlaying = true → status = "playing", isPlaying = false → status = "pending"
+        String status = isPlaying ? "playing" : "pending";
         roomDAO.updateRoom(roomId, null, status, null);
         room.setStatus(status);
         return room;
     }
 
-    public Room createRoom(Long ownerId) {
+    public Room createRoom(Integer ownerId) {
         List<Player> players = new ArrayList<>();
         Player player = new Player();
         player.setUserId(ownerId);
         players.add(player);
 
-        Long roomId = generateRoomId();
+        Integer roomId = generateRoomId();
         Room room = new Room(roomId, ownerId, 4, Instant.now(), "pending", null, players);
         roomDAO.createRoom(room);
         return room;
     }
 
-    public Room joinRoom(Long roomId, Long userId) {
+    public Room joinRoom(Integer roomId, Integer userId) {
         System.out.println("RoomController.joinRoom: roomId=" + roomId + ", userId=" + userId);
         Room room = roomDAO.getRoomById(roomId);
         if (room == null || userId == null || room.getMaxPlayer() == 0) {
@@ -259,7 +397,7 @@ public class RoomController extends ServerController {
         return room;
     }
 
-    public Room editRoom(Long roomId, Integer maxPlayer) {
+    public Room editRoom(Integer roomId, Integer maxPlayer) {
         Room room = roomDAO.getRoomById(roomId);
         if (room == null)
             return null;
@@ -271,7 +409,7 @@ public class RoomController extends ServerController {
         return room;
     }
 
-    public Room outRoom(Long roomId, Long userId) {
+    public Room outRoom(Integer roomId, Integer userId) {
         System.out.println("RoomController.outRoom: roomId=" + roomId + ", userId=" + userId);
         Room room = roomDAO.getRoomById(roomId);
         if (room == null || userId == null) {
@@ -298,7 +436,9 @@ public class RoomController extends ServerController {
                     + " players");
 
             if (players.isEmpty()) {
+                // Xóa phòng khi không còn người chơi (bất kể trạng thái pending hay playing)
                 roomDAO.deleteRoom(roomId);
+                System.out.println("RoomController.outRoom: Deleted empty room - roomId=" + roomId + ", status=" + room.getStatus());
             } else if (room.getOwnerId().equals(userId)) {
                 room.setOwnerId(players.get(0).getUserId());
                 roomDAO.updateRoom(roomId, room.getOwnerId(), null, null);
@@ -309,7 +449,7 @@ public class RoomController extends ServerController {
         return room;
     }
 
-    public Room kickPlayer(Long roomId, Long userId, Long kickedPlayerId) {
+    public Room kickPlayer(Integer roomId, Integer userId, Integer kickedPlayerId) {
         if (roomId == null || userId == null || kickedPlayerId == null)
             return null;
         Room room = roomDAO.getRoomById(roomId);

@@ -238,7 +238,7 @@ public class UserController extends ClientController {
         return null;
     }
 
-    public boolean logout(Long userId) {
+    public boolean logout(Integer userId) {
         try {
             Response response = sendAndReceive(module, "LOGOUT", userId.toString());
 
@@ -256,7 +256,7 @@ public class UserController extends ClientController {
         return false;
     }
 
-    public User getIn4(Long userId) {
+    public User getIn4(Integer userId) {
         try {
             Response response = sendAndReceive(module, "GETIN4", userId.toString());
             User user = gson.fromJson(response.getData(), User.class);

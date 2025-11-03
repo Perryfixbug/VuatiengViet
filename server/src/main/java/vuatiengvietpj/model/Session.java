@@ -5,7 +5,7 @@ import java.time.format.DateTimeFormatter;
 
 public class Session {
     private String sessionId;
-    private long userId;
+    private Integer userId;
     private String username;
     private String email;
     private LocalDateTime createdAt;
@@ -13,7 +13,7 @@ public class Session {
     private String ipAddress;
     private String userAgent;
     private boolean isActive;
-    private Long currentRoomId;
+    private Integer currentRoomId;
 
     public Session() {
         this.createdAt = LocalDateTime.now();
@@ -21,7 +21,7 @@ public class Session {
         this.isActive = true;
     }
 
-    public Session(String sessionId, long userId, String username, String email) {
+    public Session(String sessionId, Integer userId, String username, String email) {
         this();
         this.sessionId = sessionId;
         this.userId = userId;
@@ -38,11 +38,11 @@ public class Session {
         this.sessionId = sessionId;
     }
 
-    public long getUserId() {
+    public Integer getUserId() {
         return userId;
     }
 
-    public void setUserId(long userId) {
+    public void setUserId(Integer userId) {
         this.userId = userId;
     }
 
@@ -102,11 +102,11 @@ public class Session {
         isActive = active;
     }
 
-    public Long getCurrentRoomId() {
+    public Integer getCurrentRoomId() {
         return currentRoomId;
     }
 
-    public void setCurrentRoomId(Long currentRoomId) {
+    public void setCurrentRoomId(Integer currentRoomId) {
         this.currentRoomId = currentRoomId;
     }
 

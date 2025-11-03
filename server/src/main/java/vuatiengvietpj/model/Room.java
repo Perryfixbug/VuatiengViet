@@ -9,13 +9,13 @@ import com.google.gson.annotations.Expose;
 
 public class Room implements Serializable {
     @Expose
-    private Long id;
+    private Integer id;
     @Expose
-    private Long ownerId;
+    private Integer ownerId;
     @Expose
     private String ownerName; // Tên chủ phòng
     @Expose
-    private int maxPlayer;
+    private Integer maxPlayer;
     @Expose
     private List<Player> players = new ArrayList<>();
     @Expose
@@ -29,7 +29,7 @@ public class Room implements Serializable {
 
     }
 
-    public Room(Long id, Long ownerId, int maxPlayer, Instant createAt, String status, ChallengePack cp, List<Player> players) {
+    public Room(Integer id, Integer ownerId, Integer maxPlayer, Instant createAt, String status, ChallengePack cp, List<Player> players) {
         this.id = id;
         this.ownerId = ownerId;
         this.maxPlayer = maxPlayer;
@@ -39,27 +39,27 @@ public class Room implements Serializable {
         this.players = players;
     }
 
-    public Long getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
-    public Long getOwnerId() {
+    public Integer getOwnerId() {
         return ownerId;
     }
 
-    public void setOwnerId(Long ownerId) {
+    public void setOwnerId(Integer ownerId) {
         this.ownerId = ownerId;
     }
 
-    public int getMaxPlayer() {
+    public Integer getMaxPlayer() {
         return maxPlayer;
     }
 
-    public void setMaxPlayer(int maxPlayer) {
+    public void setMaxPlayer(Integer maxPlayer) {
         this.maxPlayer = maxPlayer;
     }
 

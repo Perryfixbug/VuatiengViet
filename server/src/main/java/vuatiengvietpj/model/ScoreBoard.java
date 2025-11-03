@@ -6,15 +6,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ScoreBoard implements Serializable {
-    private Long roomId;
+    private Integer roomId;
     private List<Player> Player = new ArrayList<>();
     private Instant updateAt;
 
-    public Long getRoomId() {
+    public Integer getRoomId() {
         return roomId;
     }
 
-    public void setRoomId(Long roomId) {
+    public void setRoomId(Integer roomId) {
         this.roomId = roomId;
     }
 

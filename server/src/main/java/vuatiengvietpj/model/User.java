@@ -8,7 +8,7 @@ import com.google.gson.annotations.Expose;
 
 public class User implements Serializable {
     @Expose
-    private Long id;
+    private Integer id;
     @Expose
     private String fullName;
     @Expose
@@ -18,14 +18,14 @@ public class User implements Serializable {
     private Instant createAt;
     private Instant updateAt;
     @Expose
-    private Long totalScore;
+    private Integer totalScore;
     private static final long serialVersionUID = 1L;
 
     public User() {
     }
 
-    public User(Long id, String fullName, String email, String password, Instant createAt, Instant updateAt,
-            Long totalScore) {
+    public User(Integer id, String fullName, String email, String password, Instant createAt, Instant updateAt,
+            Integer totalScore) {
         this.id = id;
         this.fullName = fullName;
         this.email = email;
@@ -39,7 +39,7 @@ public class User implements Serializable {
         return fullName;
     }
 
-    public void setId(Long id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -59,11 +59,11 @@ public class User implements Serializable {
         this.updateAt = updateAt;
     }
 
-    public Long getTotalScore() {
+    public Integer getTotalScore() {
         return totalScore;
     }
 
-    public void setTotalScore(Long totalScore) {
+    public void setTotalScore(Integer totalScore) {
         this.totalScore = totalScore;
     }
 
@@ -93,7 +93,7 @@ public class User implements Serializable {
                 + ", createAt=" + createAt + ", updateAt=" + updateAt + ", totalScore=" + totalScore + "]";
     }
 
-    public Long getId() {
+    public Integer getId() {
         return id;
     }
 

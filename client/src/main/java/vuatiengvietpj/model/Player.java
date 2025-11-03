@@ -1,22 +1,24 @@
 package vuatiengvietpj.model;
 
 public class Player {
-	private Long userId;
+	private Integer userId;
 	private String name;
+	private Integer score;
 
 	public Player() {
 	}
 
-	public Player(Long userId, String name) {
+	public Player(Integer userId, String name) {
 		this.userId = userId;
 		this.name = name;
+		this.score = 0;
 	}
 
-	public Long getUserId() {
+	public Integer getUserId() {
 		return userId;
 	}
 
-	public void setUserId(Long userId) {
+	public void setUserId(Integer userId) {
 		this.userId = userId;
 	}
 
@@ -28,9 +30,17 @@ public class Player {
 		this.name = name;
 	}
 
+	public Integer getScore() {
+		return score;
+	}
+
+	public void setScore(Integer score) {
+		this.score = score;
+	}
+
 	@Override
 	public String toString() {
-		return "Player{" + "userId=" + userId + ", name='" + name + '\'' + '}';
+		return "Player{" + "userId=" + userId + ", name='" + name + '\'' + ", score=" + score + '}';
 	}
 
 }

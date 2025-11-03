@@ -4,9 +4,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
+
 import vuatiengvietpj.model.Dictionary;
-import vuatiengvietpj.util.RedisManager;
 import vuatiengvietpj.util.ConfigManager;
+import vuatiengvietpj.util.RedisManager;
 
 public class DictionaryDAO extends DAO {
     private static final int DICT_TTL = ConfigManager.getInt("cache.dictionary.ttl", 3600);
@@ -35,7 +36,7 @@ public class DictionaryDAO extends DAO {
                         Dictionary dict = new Dictionary(
                                 rs.getString("word"),
                                 rs.getString("meaning"),
-                                rs.getLong("frequency"));
+                                rs.getInt("frequency"));
                         words.add(dict);
                     }
                 }
@@ -67,7 +68,7 @@ public class DictionaryDAO extends DAO {
                         Dictionary dict = new Dictionary(
                                 rs.getString("word"),
                                 rs.getString("meaning"),
-                                rs.getLong("frequency"));
+                                rs.getInt("frequency"));
                         words.add(dict);
                     }
                 }
@@ -114,5 +115,30 @@ public class DictionaryDAO extends DAO {
         return false;
     }
 
-    // các methods khác
+    // Lấy frequency của một từ trong dictionary
+    public Integer getWordFrequency(String word) {
+        String sql = "SELECT frequency FROM dictionary WHERE LOWER(word) = ?";
+        try {
+            getDBconnection();
+            if (con == null)
+                return 0;
+            
+            try (PreparedStatement ps = con.prepareStatement(sql)) {
+                ps.setString(1, word.toLowerCase());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        Object freqObj = rs.getObject("frequency");
+                        if (freqObj != null) {
+                            return rs.getInt("frequency");
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            closeConnection();
+        }
+        return 0;
+    }
 }
