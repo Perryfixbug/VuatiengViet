@@ -1,6 +1,7 @@
 package vuatiengvietpj.util;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 
 public class DictionaryImporter {
@@ -27,17 +28,23 @@ public class DictionaryImporter {
                 return;
             }
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
+            // Đọc đúng UTF-8 (hỗ trợ BOM)
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(inputStream, StandardCharsets.UTF_8)
+            );
+
             String line;
-
             while ((line = reader.readLine()) != null) {
-                String word = line.trim();
-                if (word.isEmpty()) continue;
+                // Loại bỏ ký tự BOM (ẩn đầu file)
+                if (line.startsWith("\uFEFF")) {
+                    line = line.substring(1);
+                }
 
-                // Lọc bỏ các dòng không hợp lệ
-                if (!isValidWord(word)) continue;
+                // Bỏ dòng trống
+                if (line.trim().isEmpty()) continue;
 
-                statement.setString(1, word);
+                // Không động chạm gì khác — giữ nguyên mọi dấu, chữ hoa, chữ thường
+                statement.setString(1, line);
                 statement.addBatch();
 
                 if (++count % batchSize == 0) {
@@ -54,20 +61,5 @@ public class DictionaryImporter {
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-    }
-
-    // Hàm lọc bỏ các chuỗi không phải từ vựng hợp lệ
-    private static boolean isValidWord(String word) {
-        if (word.length() < 1 || word.length() > 100) return false;
-
-        // Không chứa ký tự lạ hoặc số
-        if (word.matches(".*[0-9~!@#$%^&*()_=+\\[\\]{}|;:'\",.<>?/\\\\].*")) return false;
-
-        // Loại các dòng có tiền tố đặc biệt
-        String lower = word.toLowerCase();
-        if (lower.startsWith("bản mẫu")) return false;
-        if (lower.contains("http") || lower.contains("www")) return false;
-
-        return true;
     }
 }

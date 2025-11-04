@@ -54,21 +54,26 @@ public class RoomController extends ServerController {
 
     // Tạo phòng mới
     private Response handleCreate(String data) {
-        // data format: "ownerId"
+        // data format: "ownerId,roomId" (roomId có thể là "null")
         if (data == null || data.isEmpty()) {
             return createErrorResponse(module, "CREATE", "Du lieu khong hop le");
         }
         try {
-            String[] parts = data.split(",");
+            String[] parts = data.split(",", -1); // -1 để giữ phần tử rỗng
             Integer ownerId = null;
             Integer roomId = null;
-            if (parts.length > 0 && parts[0] != null && !parts[0].isEmpty() && !parts[0].equalsIgnoreCase("null")) {
-                ownerId = Integer.parseInt(parts[0]);
+            
+            // Parse ownerId
+            if (parts.length > 0 && parts[0] != null && !parts[0].trim().isEmpty()) {
+                ownerId = Integer.parseInt(parts[0].trim());
             }
-
-            if (parts.length > 1 && parts[1] != null && !parts[1].isEmpty() && !parts[1].equalsIgnoreCase("null")) {
-                roomId = Integer.parseInt(parts[1]);
+            
+            // Parse roomId (nếu có và không phải "null")
+            if (parts.length > 1 && parts[1] != null && !parts[1].trim().isEmpty() 
+                && !parts[1].equalsIgnoreCase("null")) {
+                roomId = Integer.parseInt(parts[1].trim());
             }
+            
             Room room = createRoom(ownerId, roomId);
             if (room != null) {
                 return createSuccessResponse(module, "CREATE", gson.toJson(room));
@@ -369,9 +374,11 @@ public class RoomController extends ServerController {
         player.setUserId(ownerId);
         players.add(player);
 
+        // Nếu roomId null, tự sinh ID mới
         if (roomId == null) {
             roomId = generateRoomId();
         }
+        
         Room room = new Room(roomId, ownerId, 4, Instant.now(), "pending", null, players);
         roomDAO.createRoom(room);
         return room;
@@ -403,6 +410,22 @@ public class RoomController extends ServerController {
         players.add(newPlayer);
         room.setPlayers(players);
         roomDAO.addPlayerToRoom(roomId, userId);
+        // Thêm vào Redis scoreboard với điểm 0 và cập nhật tên nếu có
+        try {
+            redis.clients.jedis.Jedis jedis = vuatiengvietpj.util.RedisManager.getResource();
+            if (jedis != null) {
+                try (jedis) {
+                    String zKey = "scoreboard:" + roomId;
+                    String hKey = "scoreboard:names:" + roomId;
+                    jedis.zadd(zKey, 0.0, "user:" + userId);
+                    // Tên có thể null ở đây; nếu cần, có thể lấy từ DB User
+                    // Để đồng bộ, lưu tạm userId làm name nếu thiếu
+                    jedis.hset(hKey, "user:" + userId, String.valueOf(userId));
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("RoomController.joinRoom: Failed to add user to Redis scoreboard - " + ex.getMessage());
+        }
         System.out.println(
                 "RoomController.joinRoom: SUCCESS - added userId=" + userId + ", now " + players.size() + " players");
         return room;
@@ -445,6 +468,7 @@ public class RoomController extends ServerController {
             roomDAO.deletePlayerFromRoom(roomId, userId);
             System.out.println("RoomController.outRoom: SUCCESS - removed userId=" + userId + ", now " + players.size()
                     + " players");
+            // Giữ nguyên điểm trong Redis (không ZREM). Có thể cập nhật trạng thái nếu cần.
 
             if (players.isEmpty()) {
                 // Xóa phòng khi không còn người chơi (bất kể trạng thái pending hay playing)
