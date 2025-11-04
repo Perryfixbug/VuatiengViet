@@ -9,12 +9,12 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" prefHeight="600.0" prefWidth="900.0" spacing="15" style="-fx-padding:20; -fx-background-color: linear-gradient(to bottom right, #667eea, #764ba2); -fx-border-radius: 15; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0, 0, 5);" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="vuatiengvietpj.controller.UserController">
+<VBox alignment="CENTER" prefHeight="600.0" prefWidth="900.0" spacing="15" style="-fx-padding: 20; -fx-background-color: #e7e7e7e; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0, 0, 5);" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="vuatiengvietpj.controller.UserController">
 
     <!-- Title Label -->
-    <Label style="-fx-font-size:24px; -fx-text-fill: white; -fx-font-weight: bold; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 2, 0, 0, 1);" text="VUA TIẾNG VIỆT">
+    <Label style="-fx-font-size: 32px; -fx-text-fill: linear-gradient(to right, #fa709a, #fee140); -fx-font-weight: bold; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 2, 0, 0, 1);" text="🏆 VUA TIẾNG VIỆT 🏆">
         <font>
-            <Font name="Arial" size="18.0" />
+            <Font name="Arial" size="24.0" />
         </font>
     </Label>
 
@@ -22,16 +22,16 @@
     <TabPane fx:id="tabPane" maxWidth="596.0" prefHeight="304.0" prefWidth="596.0" style="-fx-background-color: rgba(255,255,255,0.9); -fx-border-radius: 10; -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 5, 0, 0, 2);" tabClosingPolicy="UNAVAILABLE">
 
         <!-- Tab Login -->
-        <Tab style="-fx-font-size:14px; -fx-font-weight: bold;" text="Đăng nhập">
-            <VBox alignment="CENTER" prefHeight="200" prefWidth="500" spacing="10" style="-fx-padding:15; -fx-background-color: linear-gradient(to bottom, #f093fb, #f5576c); -fx-border-radius: 10; -fx-background-radius: 10;">
+        <Tab style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 5;" text="Đăng nhập">
+            <VBox alignment="CENTER" prefHeight="200" prefWidth="500" spacing="10" style="-fx-padding: 15; -fx-background-color: linear-gradient(to bottom, #a8edea, #fed6e3); -fx-border-radius: 5; -fx-background-radius: 10;">
                 <TextField fx:id="loginEmail" promptText="Email" style="-fx-font-size:14px; -fx-background-color: white; -fx-border-radius: 5; -fx-background-radius: 5; -fx-border-color: #ddd;" />
                 <PasswordField fx:id="loginPassword" promptText="Mật khẩu" style="-fx-font-size:14px; -fx-background-color: white; -fx-border-radius: 5; -fx-background-radius: 5; -fx-border-color: #ddd;" />
-                <Button onAction="#onLogin" prefHeight="30.0" prefWidth="140.0" style="-fx-font-size:14px; -fx-background-color: linear-gradient(to right, #4facfe, #00f2fe); -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" text="Đăng nhập" />
+                <Button onAction="#onLogin" prefHeight="30.0" prefWidth="140.0" style="-fx-font-size: 14px; -fx-background-color: linear-gradient(to right, #fa709a, #fee140); -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" text="Đăng nhập" />
             </VBox>
         </Tab>
 
         <!-- Tab Signup -->
-        <Tab style="-fx-font-size:14px; -fx-font-weight: bold;" text="Đăng ký">
+        <Tab style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 5;" text="Đăng ký">
             <VBox alignment="CENTER" spacing="10" style="-fx-padding:15; -fx-background-color: linear-gradient(to bottom, #a8edea, #fed6e3); -fx-border-radius: 10; -fx-background-radius: 10;">
                 <TextField fx:id="signupName" promptText="Tên" style="-fx-font-size:14px; -fx-background-color: white; -fx-border-radius: 5; -fx-background-radius: 5; -fx-border-color: #ddd;" />
                 <TextField fx:id="signupEmail" promptText="Email" style="-fx-font-size:14px; -fx-background-color: white; -fx-border-radius: 5; -fx-background-radius: 5; -fx-border-color: #ddd;" />
@@ -41,12 +41,12 @@
         </Tab>
 
         <!-- Tab Change Password -->
-        <Tab style="-fx-font-size:14px; -fx-font-weight: bold;" text="Đổi mật khẩu">
-            <VBox alignment="CENTER" spacing="10" style="-fx-padding:15; -fx-background-color: linear-gradient(to bottom, #ffecd2, #fcb69f); -fx-border-radius: 10; -fx-background-radius: 10;">
+        <Tab style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 5;" text="Đổi mật khẩu">
+            <VBox alignment="CENTER" spacing="10" style="-fx-padding: 15; -fx-background-color: linear-gradient(to bottom, #a8edea, #fed6e3); -fx-border-radius: 10; -fx-background-radius: 10;">
                 <TextField fx:id="changePasswordEmail" promptText="Email" style="-fx-font-size:14px; -fx-background-color: white; -fx-border-radius: 5; -fx-background-radius: 5; -fx-border-color: #ddd;" />
                 <PasswordField fx:id="oldPassword" promptText="Mật khẩu cũ" style="-fx-font-size:14px; -fx-background-color: white; -fx-border-radius: 5; -fx-background-radius: 5; -fx-border-color: #ddd;" />
                 <PasswordField fx:id="newPassword" promptText="Mật khẩu mới" style="-fx-font-size:14px; -fx-background-color: white; -fx-border-radius: 5; -fx-background-radius: 5; -fx-border-color: #ddd;" />
-                <Button onAction="#onChangePassword" prefHeight="30.0" prefWidth="140.0" style="-fx-font-size:14px; -fx-background-color: linear-gradient(to right, #a8c0ff, #3f2b96); -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" text="Đổi mật khẩu" />
+                <Button onAction="#onChangePassword" prefHeight="30.0" prefWidth="140.0" style="-fx-font-size: 14px; -fx-background-color: linear-gradient(to right, #fa709a, #fee140); -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" text="Đổi mật khẩu" />
             </VBox>
         </Tab>
     </TabPane>

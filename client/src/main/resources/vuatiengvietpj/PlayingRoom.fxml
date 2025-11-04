@@ -10,56 +10,56 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
-<?import javafx.scene.text.Text?>
 
 <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="vuatiengvietpj.controller.PlayingRoomController">
    <children>
       <!-- Header: Thông tin phòng -->
       <AnchorPane layoutX="0.0" layoutY="0.0" prefHeight="80.0" prefWidth="900.0" style="-fx-background-color: #3498db;">
          <children>
-            <Label layoutX="20.0" layoutY="10.0" text="Phòng: " style="-fx-text-fill: white;">
+            <Label layoutX="20.0" layoutY="10.0" style="-fx-text-fill: white;" text="Phòng: ">
+            
                <font>
-                  <Font name="Times New Roman Bold" size="16.0" />
+                  <Font name="Arial Bold" size="16.0" />
                </font>
             </Label>
-            <Label fx:id="lblRoomId" layoutX="80.0" layoutY="10.0" prefHeight="23.0" prefWidth="150.0" text="000001" style="-fx-text-fill: white;">
+            <Label fx:id="lblRoomId" layoutX="80.0" layoutY="10.0" prefHeight="23.0" prefWidth="150.0" style="-fx-text-fill: white;" text="000001">
                <font>
-                  <Font name="Times New Roman" size="16.0" />
+                  <Font name="Arial" size="16.0" />
                </font>
             </Label>
-            <Label layoutX="250.0" layoutY="10.0" text="Trạng thái: " style="-fx-text-fill: white;">
+            <Label layoutX="250.0" layoutY="10.0" style="-fx-text-fill: white;" text="Trạng thái: ">
                <font>
-                  <Font name="Times New Roman Bold" size="16.0" />
+                  <Font name="Arial Bold" size="16.0" />
                </font>
             </Label>
-            <Label fx:id="lblStatus" layoutX="350.0" layoutY="10.0" prefHeight="23.0" prefWidth="150.0" text="Đang chơi" style="-fx-text-fill: white;">
+            <Label fx:id="lblStatus" layoutX="350.0" layoutY="10.0" prefHeight="23.0" prefWidth="150.0" style="-fx-text-fill: white;" text="Đang chơi">
                <font>
-                  <Font name="Times New Roman" size="16.0" />
+                  <Font name="Arial" size="16.0" />
                </font>
             </Label>
-            <Label layoutX="20.0" layoutY="40.0" text="Level: " style="-fx-text-fill: white;">
+            <Label layoutX="24.0" layoutY="45.0" prefHeight="20.0" prefWidth="51.0" style="-fx-text-fill: white;" text="Level: " textAlignment="RIGHT">
                <font>
-                  <Font name="Times New Roman Bold" size="14.0" />
+                  <Font name="Arial Bold" size="16.0" />
                </font>
             </Label>
-            <Label fx:id="lblLevel" layoutX="80.0" layoutY="40.0" prefHeight="23.0" prefWidth="100.0" text="1" style="-fx-text-fill: white;">
+            <Label fx:id="lblLevel" layoutX="80.0" layoutY="43.0" prefHeight="23.0" prefWidth="100.0" style="-fx-text-fill: white;" text="1">
                <font>
-                  <Font name="Times New Roman" size="14.0" />
+                  <Font name="Arial" size="14.0" />
                </font>
             </Label>
-            <Label layoutX="250.0" layoutY="40.0" text="Thời gian: " style="-fx-text-fill: white;">
+            <Label layoutX="252.0" layoutY="45.0" style="-fx-text-fill: white;" text="Thời gian: ">
                <font>
-                  <Font name="Times New Roman Bold" size="14.0" />
+                  <Font name="Arial Bold" size="16.0" />
                </font>
             </Label>
-            <Label fx:id="lblTimer" layoutX="340.0" layoutY="40.0" prefHeight="23.0" prefWidth="150.0" text="60s" style="-fx-text-fill: #f39c12; -fx-font-weight: bold; -fx-font-size: 20px;">
+            <Label fx:id="lblTimer" layoutX="350.0" layoutY="40.0" prefHeight="23.0" prefWidth="150.0" style="-fx-text-fill: #f39c12; -fx-font-weight: bold; -fx-font-size: 20px;" text="60s">
                <font>
-                  <Font name="Times New Roman Bold" size="20.0" />
+                  <Font name="Arial Bold" size="20.0" />
                </font>
             </Label>
-            <Button fx:id="btnLeaveRoom" layoutX="750.0" layoutY="20.0" mnemonicParsing="false" onAction="#OnClickLeaveRoom" prefHeight="40.0" prefWidth="130.0" text="Thoát phòng" style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;">
+            <Button fx:id="btnLeaveRoom" layoutX="750.0" layoutY="20.0" mnemonicParsing="false" onAction="#OnClickLeaveRoom" prefHeight="40.0" prefWidth="130.0" style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;" text="Thoát phòng">
                <font>
-                  <Font name="Times New Roman Bold" size="14.0" />
+                  <Font name="Arial Bold" size="14.0" />
                </font>
             </Button>
          </children>
@@ -71,9 +71,9 @@
             <!-- Challenge Pack Display -->
             <VBox spacing="10">
                <children>
-                  <Label text="Câu hỏi" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;">
+                  <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="Câu hỏi">
                      <font>
-                        <Font name="Times New Roman Bold" size="18.0" />
+                        <Font name="Arial Bold" size="18.0" />
                      </font>
                   </Label>
                   <AnchorPane prefHeight="150.0" prefWidth="460.0" style="-fx-background-color: white; -fx-border-color: #bdc3c7; -fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10; -fx-padding: 20;">
@@ -87,24 +87,24 @@
             <!-- Input và Submit -->
             <VBox spacing="10">
                <children>
-                  <Label text="Nhập đáp án:" style="-fx-font-size: 16px; -fx-text-fill: #2c3e50;">
+                  <Label style="-fx-font-size: 16px; -fx-text-fill: #2c3e50;" text="Nhập đáp án:">
                      <font>
-                        <Font name="Times New Roman" size="16.0" />
+                        <Font name="Arial" size="16.0" />
                      </font>
                   </Label>
-                  <HBox spacing="10" alignment="CENTER_LEFT">
+                  <HBox alignment="CENTER_LEFT" spacing="10">
                      <children>
-                        <TextField fx:id="txtAnswer" prefHeight="35.0" prefWidth="300.0" promptText="Nhập từ của bạn..." onAction="#OnSubmitAnswer" style="-fx-font-size: 14px;" />
-                        <Button fx:id="btnSubmit" mnemonicParsing="false" onAction="#OnSubmitAnswer" prefHeight="35.0" prefWidth="100.0" text="Gửi" style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;">
+                        <TextField fx:id="txtAnswer" onAction="#OnSubmitAnswer" prefHeight="35.0" prefWidth="300.0" promptText="Nhập từ của bạn..." style="-fx-font-size: 14px;" />
+                        <Button fx:id="btnSubmit" mnemonicParsing="false" onAction="#OnSubmitAnswer" prefHeight="35.0" prefWidth="100.0" style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;" text="Gửi">
                            <font>
-                              <Font name="Times New Roman" size="14.0" />
+                              <Font name="Arial" size="14.0" />
                            </font>
                         </Button>
                      </children>
                   </HBox>
                   <Label fx:id="lblSubmitMessage" prefHeight="20.0" prefWidth="460.0" style="-fx-text-fill: #e74c3c; -fx-font-size: 12px;" visible="false">
                      <font>
-                        <Font name="Times New Roman" size="12.0" />
+                        <Font name="Arial" size="12.0" />
                      </font>
                   </Label>
                </children>
@@ -113,9 +113,9 @@
             <!-- Danh sách từ đã đoán đúng -->
             <VBox spacing="10" VBox.vgrow="ALWAYS">
                <children>
-                  <Label text="Từ đã đoán đúng:" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;">
+                  <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="Từ đã đoán đúng:">
                      <font>
-                        <Font name="Times New Roman Bold" size="16.0" />
+                        <Font name="Arial Bold" size="16.0" />
                      </font>
                   </Label>
                   <ListView fx:id="listGuessedWords" prefHeight="200.0" prefWidth="460.0" style="-fx-background-color: white; -fx-border-color: #bdc3c7; -fx-border-width: 1; -fx-border-radius: 5; -fx-background-radius: 5;" />
@@ -127,9 +127,9 @@
       <!-- Right Panel: Scoreboard -->
       <VBox layoutX="540.0" layoutY="100.0" prefHeight="480.0" prefWidth="340.0" spacing="15" style="-fx-background-color: #ecf0f1; -fx-padding: 20; -fx-border-radius: 10; -fx-background-radius: 10;">
          <children>
-            <Label text="Bảng điểm" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;">
+            <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="Bảng điểm">
                <font>
-                  <Font name="Times New Roman Bold" size="18.0" />
+                  <Font name="Arial Bold" size="18.0" />
                </font>
             </Label>
             <TableView fx:id="tblScoreboard" prefHeight="400.0" prefWidth="300.0" style="-fx-background-color: white; -fx-border-color: #bdc3c7; -fx-border-width: 1;">
@@ -141,14 +141,14 @@
             </TableView>
             <VBox spacing="5" style="-fx-background-color: white; -fx-padding: 10; -fx-border-color: #bdc3c7; -fx-border-width: 1; -fx-border-radius: 5; -fx-background-radius: 5;">
                <children>
-                  <Label fx:id="lblMyScore" text="Điểm của bạn: 0" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #27ae60;">
+                  <Label fx:id="lblMyScore" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #27ae60;" text="Điểm của bạn: 0">
                      <font>
-                        <Font name="Times New Roman Bold" size="14.0" />
+                        <Font name="Arial Bold" size="14.0" />
                      </font>
                   </Label>
-                  <Label fx:id="lblMyRank" text="Hạng: -" style="-fx-font-size: 12px; -fx-text-fill: #7f8c8d;">
+                  <Label fx:id="lblMyRank" style="-fx-font-size: 12px; -fx-text-fill: #7f8c8d;" text="Hạng: -">
                      <font>
-                        <Font name="Times New Roman" size="12.0" />
+                        <Font name="Arial" size="12.0" />
                      </font>
                   </Label>
                </children>
@@ -159,9 +159,9 @@
       <!-- Status bar -->
       <AnchorPane layoutX="0.0" layoutY="580.0" prefHeight="20.0" prefWidth="900.0" style="-fx-background-color: #34495e;">
          <children>
-            <Label fx:id="lblStatusBar" layoutX="10.0" layoutY="2.0" prefHeight="16.0" prefWidth="880.0" text="Sẵn sàng" style="-fx-text-fill: white; -fx-font-size: 11px;">
+            <Label fx:id="lblStatusBar" layoutX="10.0" layoutY="2.0" prefHeight="16.0" prefWidth="880.0" style="-fx-text-fill: white; -fx-font-size: 11px;" text="Sẵn sàng">
                <font>
-                  <Font name="Times New Roman" size="11.0" />
+                  <Font name="Arial" size="11.0" />
                </font>
             </Label>
          </children>
@@ -170,7 +170,7 @@
       <!-- Countdown Overlay (5 giây) -->
       <AnchorPane fx:id="overlayCountdown" layoutX="0.0" layoutY="0.0" prefHeight="600.0" prefWidth="900.0" style="-fx-background-color: #000000CC;" visible="false">
          <children>
-            <Label fx:id="lblCountdown" alignment="CENTER" layoutX="300.0" layoutY="250.0" prefHeight="100.0" prefWidth="300.0" text="5" style="-fx-text-fill: #f39c12; -fx-font-size: 72px; -fx-font-weight: bold;" textAlignment="CENTER">
+            <Label fx:id="lblCountdown" alignment="CENTER" layoutX="300.0" layoutY="250.0" prefHeight="100.0" prefWidth="300.0" style="-fx-text-fill: #f39c12; -fx-font-size: 72px; -fx-font-weight: bold;" text="5" textAlignment="CENTER">
                <font>
                   <Font name="Arial Bold" size="72.0" />
                </font>
@@ -179,4 +179,3 @@
       </AnchorPane>
    </children>
 </AnchorPane>
-

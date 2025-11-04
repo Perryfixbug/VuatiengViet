@@ -7,67 +7,89 @@
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="900.0" style="-fx-background-color: lightaqua;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="vuatiengvietpj.controller.ListRoomController">
-   <children>
-      <AnchorPane prefHeight="80.0" prefWidth="900.0" style="-fx-background-color: #3498db;">
-         <children>
-            <Label alignment="CENTER" graphicTextGap="5.0" layoutX="306.0" layoutY="11.0" prefHeight="57.0" prefWidth="288.0" style="-fx-text-fill: white;" text="🏆 Vua Tiếng Việt" textAlignment="CENTER">
+<AnchorPane prefHeight="600.0" prefWidth="900.0" style="-fx-background-color: linear-gradient(to bottom right, #f0faff, #e3f2fd); -fx-font-family: 'Segoe UI Semibold';" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="vuatiengvietpj.controller.ListRoomController">
+
+    <children>
+
+        <!-- HEADER -->
+        <AnchorPane prefHeight="80.0" prefWidth="900.0" style="-fx-background-color: linear-gradient(to right, #1565C0, #42A5F5); -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.25), 8, 0, 0, 3);">
+            <children>
+                <Label alignment="CENTER" layoutX="250.0" layoutY="15.0" prefHeight="50.0" prefWidth="400.0" style="-fx-text-fill: white; -fx-font-weight: bold;" text="🏆 Vua Tiếng Việt 🏆">
+                    <font>
+                        <Font size="24.0" />
+                    </font>
+                </Label>
+                <Button fx:id="btnBack" layoutX="780.0" layoutY="24.0" onAction="#OnClickBack" prefHeight="32.0" prefWidth="90.0" style="-fx-background-color: #ef5350; -fx-text-fill: white; -fx-background-radius: 20;" text="⬅ Quay lại" />
+            </children>
+        </AnchorPane>
+
+        <!-- TIÊU ĐỀ CHÍNH -->
+        <Label alignment="CENTER" layoutX="230.0" layoutY="94.0" prefHeight="50.0" prefWidth="440.0" style="-fx-text-fill: #1565C0;" text="🎮 DANH SÁCH PHÒNG CHƠI 🎮">
+            <font>
+                <Font name="System Bold" size="28.0" />
+            </font>
+        </Label>
+
+        <!-- BẢNG DANH SÁCH PHÒNG -->
+        <AnchorPane layoutX="60.0" layoutY="170.0" prefHeight="380.0" prefWidth="520.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 3);">
+            <children>
+                <Label layoutX="130.0" layoutY="15.0" text="Danh sách phòng hoạt động" textFill="#1565C0">
+                    <font>
+                        <Font name="System Bold" size="18.0" />
+                    </font>
+                </Label>
+
+                <ScrollPane hbarPolicy="NEVER" layoutX="15.0" layoutY="55.0" prefHeight="300.0" prefWidth="490.0" style="-fx-background-color: transparent;">
+                    <content>
+                        <TableView fx:id="tblRoomList" prefHeight="295.0" prefWidth="490.0" style="-fx-background-color: transparent;">
+                            <columns>
+                                <TableColumn prefWidth="110" text="Mã phòng" />
+                                <TableColumn prefWidth="120" text="Chủ phòng" />
+                                <TableColumn prefWidth="84.00001525878906" text="Số người" />
+                                <TableColumn prefWidth="104.7999267578125" text="Trạng thái" />
+                            </columns>
+                        </TableView>
+                    </content>
+                </ScrollPane>
+      
+              <!-- NÚT TẢI LẠI -->
+              <Button fx:id="btnReload" layoutX="427.0" layoutY="13.0" onAction="#OnClickReload" prefHeight="30.0" prefWidth="77.0" style="-fx-background-color: #f2f2f2; -fx-text-fill: #8e8d8d; -fx-background-radius: 10;" text="⟳ Tải lại" textFill="#8e8d8d">
                <font>
-                  <Font size="20.0" />
-               </font>
-            </Label>
-         </children>
-      </AnchorPane>
-      <VBox layoutX="60.0" layoutY="180.0" prefHeight="367.0" prefWidth="524.0" style="-fx-background-color: lightgray;">
-         <children>
-            <ScrollPane hbarPolicy="NEVER" prefHeight="442.0" prefWidth="510.0">
-               <content>
-                  <TableView fx:id="tblRoomList" prefHeight="390.0" prefWidth="514.0">
-                     <columns>
-                        <TableColumn prefWidth="127.20000153779984" text="Mã phòng" />
-                        <TableColumn prefWidth="116.0" text="Chủ phòng" />
-                        <TableColumn prefWidth="88.80006408691406" text="Số người" />
-                        <TableColumn minWidth="4.0" prefWidth="104.7999267578125" text="Trạng thái" />
-                     </columns>
-                  </TableView>
-               </content>
-            </ScrollPane>
-         </children>
-      </VBox>
-      <AnchorPane layoutX="606.0" layoutY="180.0" prefHeight="367.0" prefWidth="240.0" style="-fx-background-color: #66CCFF;">
-         <children>
-            <Button fx:id="btnCreateRoom" layoutX="20.0" layoutY="258.0" mnemonicParsing="false" onAction="#OnClickCreate" prefHeight="80.0" prefWidth="200.0" style="-fx-background-color: #FFA000;" text="Tạo phòng mới" textFill="WHITE">
-               <font>
-                  <Font name="System Bold" size="18.0" />
+                  <Font name="System Bold" size="14.0" />
                </font>
             </Button>
-            <Button fx:id="btnQuickJoin" alignment="CENTER" layoutX="20.0" layoutY="154.0" mnemonicParsing="false" onAction="#OnClickJoin" prefHeight="80.0" prefWidth="200.0" style="-fx-background-color: #00BFA5;" text="Vào nhanh" textAlignment="CENTER" textFill="WHITE">
-               <font>
-                  <Font name="System Bold" size="18.0" />
-               </font>
-            </Button>
-            <Button fx:id="BtnSearch" layoutX="20.0" layoutY="94.0" mnemonicParsing="false" onAction="#OnClickSearch" prefHeight="26.0" prefWidth="200.0" style="-fx-background-color: #0288D1;" text="Tham gia theo mã phòng" textFill="WHITE">
-               <font>
-                  <Font size="14.0" />
-               </font>
-            </Button>
-            <TextField fx:id="txtSearchRoom" layoutX="20.0" layoutY="55.0" onAction="#searchRoom" prefHeight="26.0" prefWidth="200.0" promptText="Nhập mã phòng" />
-            <Label layoutX="84.0" layoutY="14.0" text="Tùy chọn" textFill="WHITE">
-               <font>
-                  <Font name="System Bold Italic" size="18.0" />
-               </font>
-            </Label>
-         </children>
-      </AnchorPane>
-      <Button fx:id="btnReload" layoutX="60.0" layoutY="113.0" mnemonicParsing="false" onAction="#OnClickReload" prefHeight="26.0" prefWidth="150.0" style="-fx-background-color: #33CCFF;" text="Tải lại danh sách phòng" textAlignment="CENTER" />
-      <Button fx:id="btnBack" alignment="CENTER" layoutX="695.0" layoutY="112.0" mnemonicParsing="false" onAction="#OnClickBack" prefHeight="26.0" prefWidth="150.0" style="-fx-background-color: #e74c3c; -fx-text-fill: white;" text="Quay về " />
-      <Label alignment="CENTER" graphicTextGap="5.0" layoutX="279.0" layoutY="96.0" prefHeight="58.0" prefWidth="341.0" style="-fx-text-fill: #3498db;" text="Chọn Phòng Chơi" textAlignment="CENTER">
-         <font>
-            <Font name="System Bold" size="36.0" />
-         </font>
-      </Label>
-   </children>
+            </children>
+        </AnchorPane>
+
+        <!-- CỘT TÙY CHỌN -->
+        <AnchorPane layoutX="610.0" layoutY="170.0" prefHeight="380.0" prefWidth="230.0" style="-fx-background-color: white; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 3);">
+            <children>
+                <Label layoutX="80.0" layoutY="15.0" text="Tùy chọn" textFill="#1565C0">
+                    <font>
+                        <Font name="System Bold Italic" size="18.0" />
+                    </font>
+                </Label>
+
+                <TextField fx:id="txtSearchRoom" layoutX="15.0" layoutY="60.0" prefHeight="28.0" prefWidth="200.0" promptText="Nhập mã phòng..." style="-fx-background-radius: 10; -fx-border-radius: 7; -fx-border-color: #90CAF9; -fx-background-color: #FAFAFA;" />
+
+                <Button fx:id="BtnSearch" layoutX="15.0" layoutY="100.0" onAction="#OnClickSearch" prefHeight="34.0" prefWidth="200.0" style="-fx-background-color: #29B6F6; -fx-text-fill: white; -fx-background-radius: 10;" text="🔍 Tham gia theo mã" />
+
+                <Button fx:id="btnQuickJoin" layoutX="15.0" layoutY="210.0" onAction="#OnClickJoin" prefHeight="50.0" prefWidth="200.0" style="-fx-background-color: linear-gradient(to right, #00BFA5, #1DE9B6); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10;" text="⚡ Vào nhanh">
+                    <font>
+                        <Font size="18.0" />
+                    </font>
+                </Button>
+
+                <Button fx:id="btnCreateRoom" layoutX="15.0" layoutY="280.0" onAction="#OnClickCreate" prefHeight="50.0" prefWidth="200.0" style="-fx-background-color: linear-gradient(to right, #FFB300, #FFCA28); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10;" text="➕ Tạo phòng">
+                    <font>
+                        <Font size="18.0" />
+                    </font>
+                </Button>
+
+            </children>
+        </AnchorPane>
+
+    </children>
 </AnchorPane>

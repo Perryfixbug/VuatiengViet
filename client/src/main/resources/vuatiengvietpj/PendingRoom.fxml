@@ -10,45 +10,45 @@
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="vuatiengvietpj.controller.PendingRoomController">
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="900.0" style="-fx-background-color: #66CCFF;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="vuatiengvietpj.controller.PendingRoomController">
    <children>
-      <Pane layoutX="494.0" layoutY="111.0" prefHeight="226.0" prefWidth="350.0" style="-fx-background-color: #66CCFF;">
+      <Pane layoutX="494.0" layoutY="111.0" prefHeight="226.0" prefWidth="350.0" style="-fx-background-color: white; -fx-background-radius: 15;">
          <children>
-            <Label alignment="CENTER" layoutX="26.0" layoutY="14.0" prefHeight="58.0" prefWidth="300.0" style="-fx-background-color: #3498db;" text="Thông tin phòng" textAlignment="CENTER" textFill="WHITE">
-               <font>
-                  <Font name="Times New Roman Bold" size="24.0" />
-               </font>
-            </Label>
-            <AnchorPane layoutX="25.0" layoutY="72.0" prefHeight="140.0" prefWidth="300.0" style="-fx-background-color: white;">
+            <AnchorPane layoutX="25.0" layoutY="22.0" prefHeight="190.0" prefWidth="300.0" style="-fx-background-color: white; -fx-background-radius: 10;">
                <children>
-                  <Label layoutX="30.0" layoutY="16.0" text="Mã phòng:">
+                  <Label layoutX="36.0" layoutY="67.0" text="Mã phòng:">
                      <font>
-                        <Font name="Times New Roman Bold" size="18.0" />
+                        <Font name="Arial Bold" size="18.0" />
                      </font>
                   </Label>
-                  <Label fx:id="lblRoomId" layoutX="160.0" layoutY="14.0" prefHeight="23.0" prefWidth="109.0" text="000001">
+                  <Label fx:id="lblRoomId" layoutX="190.0" layoutY="66.0" prefHeight="23.0" prefWidth="109.0" text="000001">
                      <font>
-                        <Font name="Times New Roman Italic" size="18.0" />
+                        <Font name="Arial" size="18.0" />
                      </font>
                   </Label>
-                  <Label layoutX="30.0" layoutY="59.0" text="Số người chơi:">
+                  <Label layoutX="36.0" layoutY="110.0" text="Số người chơi:">
                      <font>
-                        <Font name="Times New Roman Bold" size="18.0" />
+                        <Font name="Arial Bold" size="18.0" />
                      </font>
                   </Label>
-                  <Label fx:id="lblCountPlayer" layoutX="160.0" layoutY="57.0" prefHeight="23.0" prefWidth="60.0" text="1/8">
+                  <Label fx:id="lblCountPlayer" layoutX="190.0" layoutY="109.0" prefHeight="23.0" prefWidth="60.0" text="1/8">
                      <font>
-                        <Font name="Times New Roman Italic" size="18.0" />
+                        <Font name="Arial" size="18.0" />
                      </font>
                   </Label>
-                  <ChoiceBox fx:id="cbxNumberPlayer" layoutX="160.0" layoutY="98.0" prefHeight="23.0" prefWidth="50.0">
+                  <ChoiceBox fx:id="cbxNumberPlayer" layoutX="190.0" layoutY="150.0" prefHeight="23.0" prefWidth="50.0">
                      <effect>
                         <Blend />
                      </effect>
                   </ChoiceBox>
-                  <Label layoutX="30.0" layoutY="101.0" text="Số người tối đa: ">
+                  <Label layoutX="36.0" layoutY="152.0" text="Số người tối đa: ">
                      <font>
-                        <Font name="Times New Roman Bold" size="18.0" />
+                        <Font name="Arial Bold" size="18.0" />
+                     </font>
+                  </Label>
+                  <Label alignment="CENTER" prefHeight="58.0" prefWidth="300.0" style="-fx-background-color: #3498db; -fx-background-radius: 10;" text="Thông tin phòng" textAlignment="CENTER" textFill="WHITE">
+                     <font>
+                        <Font name="Arial Bold" size="24.0" />
                      </font>
                   </Label>
                </children>
@@ -57,14 +57,14 @@
       </Pane>
       <AnchorPane prefHeight="80.0" prefWidth="900.0" style="-fx-background-color: #3498db;">
          <children>
-            <Label alignment="CENTER" graphicTextGap="5.0" layoutX="306.0" layoutY="11.0" prefHeight="57.0" prefWidth="288.0" style="-fx-text-fill: white;" text="🏆 Vua Tiếng Việt" textAlignment="CENTER">
+            <Label alignment="CENTER" graphicTextGap="5.0" layoutX="306.0" layoutY="11.0" prefHeight="57.0" prefWidth="288.0" style="-fx-text-fill: white;" text="🏆 Vua Tiếng Việt 🏆" textAlignment="CENTER">
                <font>
-                  <Font size="20.0" />
+                  <Font name="System Bold" size="24.0" />
                </font>
             </Label>
          </children>
       </AnchorPane>
-      <Pane layoutX="51.0" layoutY="111.0" prefHeight="447.0" prefWidth="401.0" style="-fx-background-color: #66CCFF;">
+      <Pane layoutX="51.0" layoutY="111.0" prefHeight="447.0" prefWidth="401.0" style="-fx-background-color: white; -fx-background-radius: 15;">
          <children>
          <TableView fx:id="tblPlayerList" layoutX="21.0" layoutY="103.0" prefHeight="330.0" prefWidth="360.0">
               <columns>
@@ -75,21 +75,21 @@
             </TableView>
             <Label alignment="CENTER" layoutX="21.0" layoutY="26.0" prefHeight="58.0" prefWidth="360.0" style="-fx-background-color: #3498db;" text="Danh sách chờ" textAlignment="CENTER" textFill="WHITE">
                <font>
-                  <Font name="Times New Roman Bold" size="24.0" />
+                  <Font name="Arial Bold" size="24.0" />
                </font>
             </Label>
          </children>
       </Pane>
-      <Pane layoutX="494.0" layoutY="358.0" prefHeight="200.0" prefWidth="350.0" style="-fx-background-color: #66CCFF;">
+      <Pane layoutX="494.0" layoutY="358.0" prefHeight="200.0" prefWidth="350.0" style="-fx-background-color: white; -fx-background-radius: 15;">
          <children>
-            <Button fx:id="btnOutRoom" layoutX="55.0" layoutY="113.0" mnemonicParsing="false" onAction="#OnClickOut" prefHeight="64.0" prefWidth="240.0" style="-fx-background-color: #e74c3c;" text="Rời phòng" textFill="WHITE">
+            <Button fx:id="btnOutRoom" layoutX="55.0" layoutY="113.0" mnemonicParsing="false" onAction="#OnClickOut" prefHeight="64.0" prefWidth="240.0" style="-fx-background-color: linear-gradient(to right, #e74c3c, #ff6b6b); -fx-background-radius: 15;" text="Rời phòng" textFill="WHITE">
                <font>
-                  <Font name="Times New Roman Bold Italic" size="24.0" />
+                  <Font name="Arial Bold" size="24.0" />
                </font>
             </Button>
-            <Button fx:id="btnStart" graphicTextGap="10.0" layoutX="55.0" layoutY="30.0" mnemonicParsing="false" onAction="#OnClickStart" prefHeight="64.0" prefWidth="240.0" style="-fx-background-color: #00BFA5;" text="Bắt đầu" textFill="WHITE">
+            <Button fx:id="btnStart" graphicTextGap="10.0" layoutX="55.0" layoutY="30.0" mnemonicParsing="false" onAction="#OnClickStart" prefHeight="64.0" prefWidth="240.0" style="-fx-background-color: linear-gradient(to right, #00BFA5, #1DE9B6); -fx-background-radius: 15;" text="Bắt đầu" textFill="WHITE">
                <font>
-                  <Font name="Times New Roman Bold Italic" size="24.0" />
+                  <Font name="Arial Bold" size="24.0" />
                </font>
             </Button>
          </children>
