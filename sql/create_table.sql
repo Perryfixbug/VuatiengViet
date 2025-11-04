@@ -1,48 +1,94 @@
-USE vtvdb;
-
--- CREATE TABLE User (
---     id INTEGER NOT NULL PRIMARY KEY auto_increment,
+-- ===========================================
+-- Table: User
+-- ===========================================
+-- CREATE TABLE user (
+--     id INTEGER AUTO_INCREMENT PRIMARY KEY,
 --     fullName VARCHAR(255) NOT NULL,
---     email VARCHAR(255) NOT NULL,
+--     email VARCHAR(255) UNIQUE NOT NULL,
 --     password VARCHAR(255) NOT NULL,
---     createAt TIMESTAMP NOT NULL,
---     updateAt TIMESTAMP NOT NULL,
---     totalScore INTEGER DEFAULT 0
--- );
+--     createAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     updateAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+--     totalScore INTEGER DEFAULT 0,
+--     INDEX idx_email (email)
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ===========================================
+-- Table: ChallengePack
+-- ===========================================
+-- CREATE TABLE challengePack (
+--     id INTEGER AUTO_INCREMENT PRIMARY KEY,
+--     quizz VARCHAR(255) NOT NULL,
+--     level INTEGER NOT NULL DEFAULT 1,
+--     INDEX idx_level (level)
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- CREATE TABLE Player (
---     id INTEGER NOT NULL PRIMARY KEY,
+-- -- ===========================================
+-- -- Table: Dictionary
+-- -- ===========================================
+-- CREATE TABLE dictionary (
+--     word VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin PRIMARY KEY,
+--     frequency INT DEFAULT 0,
+--     INDEX idx_frequency (frequency)
+-- ) ENGINE=InnoDB
+--   DEFAULT CHARSET=utf8mb4
+--   COLLATE=utf8mb4_bin;
+
+-- ===========================================
+-- Table: Answer
+-- ===========================================
+CREATE TABLE answer (
+    challengePackId INTEGER NOT NULL,
+    dictionaryWord VARCHAR(255)
+        CHARACTER SET utf8mb4
+        COLLATE utf8mb4_bin
+        NOT NULL,
+    PRIMARY KEY (challengePackId, dictionaryWord),
+    FOREIGN KEY (challengePackId) REFERENCES challengePack(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    FOREIGN KEY (dictionaryWord) REFERENCES dictionary(word)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    INDEX idx_challenge (challengePackId),
+    INDEX idx_word (dictionaryWord)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_bin;
+
+-- ===========================================
+-- Table: Room
+-- ===========================================
+CREATE TABLE room (
+    id INTEGER PRIMARY KEY,
+    ownerId INTEGER,
+    maxPlayer INTEGER NOT NULL DEFAULT 4,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    challengePackId INTEGER DEFAULT NULL,
+    FOREIGN KEY (challengePackId) REFERENCES challengePack(id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+    FOREIGN KEY (ownerId) REFERENCES user(id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+    INDEX idx_status (status),
+    INDEX idx_owner (ownerId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===========================================
+-- Table: Player
+-- ===========================================
+-- CREATE TABLE player (
 --     userId INTEGER NOT NULL,
 --     roomId INTEGER NOT NULL,
---     score INT DEFAULT 0
--- );
-
--- CREATE TABLE Room (
---     id INTEGER NOT NULL PRIMARY KEY,
---     ownerId INTEGER NOT NULL,
---     maxPlayer INTEGER NOT NULL,
---     createdAt TIMESTAMP NOT NULL,
---     status VARCHAR(50) NOT NULL,
---     challengePackId INTEGER DEFAULT NULL,
---     FOREIGN KEY (challengePackId) REFERENCES ChallengePack(id)
--- );
-
-CREATE TABLE dictionary(
-	word VARCHAR(255) PRIMARY KEY,
-    frequency INTEGER
-);
-
-CREATE TABLE challengepack(
-	id INTEGER PRIMARY KEY,
-    quizz VARCHAR(255),
-    level INTEGER
-);
-
-CREATE TABLE answer(
-	challengePackId INTEGER,
-    dictionaryWord VARCHAR(255),
-    FOREIGN KEY (challengePackId) REFERENCES challengepack (id) ON DELETE CASCADE,
-	FOREIGN KEY (dictionaryWord) REFERENCES dictionary (word),
-    PRIMARY KEY (challengePackId, dictionaryWord)
-);
+--     score INTEGER DEFAULT 0,
+--     PRIMARY KEY (userId, roomId),
+--     FOREIGN KEY (userId) REFERENCES user(id)
+--         ON DELETE CASCADE
+--         ON UPDATE CASCADE,
+--     FOREIGN KEY (roomId) REFERENCES room(id)
+--         ON DELETE CASCADE
+--         ON UPDATE CASCADE,
+--     INDEX idx_room (roomId),
+--     INDEX idx_user (userId)
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
