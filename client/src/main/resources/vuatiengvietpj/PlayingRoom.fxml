@@ -168,7 +168,7 @@
       </AnchorPane>
       
       <!-- Countdown Overlay (5 giây) -->
-      <AnchorPane fx:id="overlayCountdown" layoutX="0.0" layoutY="0.0" prefHeight="600.0" prefWidth="900.0" style="-fx-background-color: rgba(0, 0, 0, 0.8);" visible="false">
+      <AnchorPane fx:id="overlayCountdown" layoutX="0.0" layoutY="0.0" prefHeight="600.0" prefWidth="900.0" style="-fx-background-color: #000000CC;" visible="false">
          <children>
             <Label fx:id="lblCountdown" alignment="CENTER" layoutX="300.0" layoutY="250.0" prefHeight="100.0" prefWidth="300.0" text="5" style="-fx-text-fill: #f39c12; -fx-font-size: 72px; -fx-font-weight: bold;" textAlignment="CENTER">
                <font>
