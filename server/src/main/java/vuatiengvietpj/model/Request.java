@@ -50,6 +50,7 @@ public class Request implements Serializable {
 
     @Override
     public String toString() {
-        return "Request [module=" + module + ", maLenh=" + maLenh + ", data=" + data + "]";
+        return "Request [module=" + module + ", maLenh=" + maLenh + ", data=" + data + ", ip=" + ip + "]";
     }
+
 }

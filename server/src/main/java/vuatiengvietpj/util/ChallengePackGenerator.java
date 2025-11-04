@@ -8,15 +8,16 @@ import java.util.stream.Collectors;
 
 public class ChallengePackGenerator {
     static final String URL = ConfigManager.get("DB_URL") +
-        "?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci";
+            (ConfigManager.get("DB_URL").contains("?") ? "&" : "?") +
+            "useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci";
     static final String USER = ConfigManager.get("DB_USER");
     static final String PASS = ConfigManager.get("DB_PASS");
 
-    static final int MIN_ANSWER_COUNT = 10;   // ít nhất bao nhiêu từ hợp lệ để chấp nhận bộ đề
-    static final int TARGET_PACK = 90;        // số bộ đề cần sinh
-    static final int MIN_QUIZ_LEN = 5;        // độ dài quiz tối thiểu
-    static final int MAX_QUIZ_LEN = 8;        // độ dài quiz tối đa
-    static final int MAX_ATTEMPTS = 20000;    // số lần thử sinh (tránh vòng vô hạn)
+    static final int MIN_ANSWER_COUNT = 10; // ít nhất bao nhiêu từ hợp lệ để chấp nhận bộ đề
+    static final int TARGET_PACK = 90; // số bộ đề cần sinh
+    static final int MIN_QUIZ_LEN = 5; // độ dài quiz tối thiểu
+    static final int MAX_QUIZ_LEN = 8; // độ dài quiz tối đa
+    static final int MAX_ATTEMPTS = 20000; // số lần thử sinh (tránh vòng vô hạn)
 
     static final Set<Character> INVALID_CHARS = Set.of('f', 'j', 'w', 'z');
 
@@ -27,8 +28,10 @@ public class ChallengePackGenerator {
             // 1️⃣ Tải toàn bộ từ điển
             List<String> dictionary = new ArrayList<>();
             try (Statement st = conn.createStatement();
-                 ResultSet rs = st.executeQuery("SELECT word FROM dictionary WHERE CHAR_LENGTH(word) BETWEEN 2 AND 20")) {
-                while (rs.next()) dictionary.add(rs.getString("word").toLowerCase());
+                    ResultSet rs = st
+                            .executeQuery("SELECT word FROM dictionary WHERE CHAR_LENGTH(word) BETWEEN 2 AND 20")) {
+                while (rs.next())
+                    dictionary.add(rs.getString("word").toLowerCase());
             }
 
             if (dictionary.isEmpty()) {
@@ -54,15 +57,18 @@ public class ChallengePackGenerator {
 
                 // 3️⃣ Sinh quiz ngẫu nhiên (chỉ dùng ký tự hợp lệ)
                 String quiz = randomQuiz(random);
-                if (usedQuiz.contains(quiz)) continue;
+                if (usedQuiz.contains(quiz))
+                    continue;
                 usedQuiz.add(quiz);
 
                 // 4️⃣ Lọc đáp án hợp lệ: có thể tạo từ quiz
                 List<String> valid = new ArrayList<>();
                 for (int i = 0; i < dictionary.size(); i++) {
                     String wordNorm = dictNoAccent.get(i);
-                    if (wordNorm.isEmpty()) continue;
-                    if (canForm(wordNorm, quiz)) valid.add(dictionary.get(i));
+                    if (wordNorm.isEmpty())
+                        continue;
+                    if (canForm(wordNorm, quiz))
+                        valid.add(dictionary.get(i));
                 }
 
                 // 5️⃣ Nếu đạt yêu cầu thì lưu vào DB
@@ -80,7 +86,8 @@ public class ChallengePackGenerator {
 
             System.out.println("🎉 Hoàn thành: sinh được " + packCount + " bộ đề.");
             if (packCount < TARGET_PACK) {
-                System.out.println("⚠️ Gợi ý: nếu không đủ, giảm MIN_ANSWER_COUNT hoặc tăng MAX_ATTEMPTS hoặc giảm MIN_QUIZ_LEN.");
+                System.out.println(
+                        "⚠️ Gợi ý: nếu không đủ, giảm MIN_ANSWER_COUNT hoặc tăng MAX_ATTEMPTS hoặc giảm MIN_QUIZ_LEN.");
             }
         }
     }
@@ -95,7 +102,8 @@ public class ChallengePackGenerator {
             ps.executeUpdate();
 
             try (ResultSet rs = ps.getGeneratedKeys()) {
-                if (!rs.next()) throw new SQLException("Không lấy được generated key");
+                if (!rs.next())
+                    throw new SQLException("Không lấy được generated key");
                 int id = rs.getInt(1);
 
                 try (PreparedStatement pa = conn.prepareStatement(
@@ -126,12 +134,16 @@ public class ChallengePackGenerator {
     static boolean canForm(String word, String quiz) {
         int[] q = new int[26];
         for (char c : quiz.toCharArray()) {
-            if (c >= 'a' && c <= 'z') q[c - 'a']++;
+            if (c >= 'a' && c <= 'z')
+                q[c - 'a']++;
         }
         for (char c : word.toCharArray()) {
-            if (c < 'a' || c > 'z') return false;
-            if (INVALID_CHARS.contains(c)) return false;
-            if (q[c - 'a'] <= 0) return false;
+            if (c < 'a' || c > 'z')
+                return false;
+            if (INVALID_CHARS.contains(c))
+                return false;
+            if (q[c - 'a'] <= 0)
+                return false;
             q[c - 'a']--;
         }
         return true;
@@ -139,7 +151,8 @@ public class ChallengePackGenerator {
 
     // === Chuẩn hóa bỏ dấu ===
     static String normalizeWord(String s) {
-        if (s == null) return "";
+        if (s == null)
+            return "";
         String temp = Normalizer.normalize(s, Normalizer.Form.NFD);
         temp = Pattern.compile("\\p{InCombiningDiacriticalMarks}+").matcher(temp).replaceAll("");
         temp = temp.replace('đ', 'd').replace('Đ', 'D');
@@ -150,8 +163,11 @@ public class ChallengePackGenerator {
 
     // === Đánh cấp độ theo độ dài quiz ===
     static int getLevel(int len) {
-        if (len <= 5) return 1;
-        else if (len <= 7) return 2;
-        else return 3;
+        if (len <= 5)
+            return 1;
+        else if (len <= 7)
+            return 2;
+        else
+            return 3;
     }
 }
