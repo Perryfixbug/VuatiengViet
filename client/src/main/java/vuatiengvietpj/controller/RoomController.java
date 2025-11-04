@@ -19,19 +19,23 @@ public class RoomController extends ClientController implements AutoCloseable {
         this.gson = new com.google.gson.GsonBuilder()
                 .registerTypeAdapter(java.time.Instant.class, new com.google.gson.JsonSerializer<java.time.Instant>() {
                     @Override
-                    public com.google.gson.JsonElement serialize(java.time.Instant src, java.lang.reflect.Type typeOfSrc, com.google.gson.JsonSerializationContext context) {
+                    public com.google.gson.JsonElement serialize(java.time.Instant src,
+                            java.lang.reflect.Type typeOfSrc, com.google.gson.JsonSerializationContext context) {
                         return new com.google.gson.JsonPrimitive(src.toString());
                     }
                 })
-                .registerTypeAdapter(java.time.Instant.class, new com.google.gson.JsonDeserializer<java.time.Instant>() {
-                    @Override
-                    public java.time.Instant deserialize(com.google.gson.JsonElement json, java.lang.reflect.Type typeOfT, com.google.gson.JsonDeserializationContext context) throws com.google.gson.JsonParseException {
-                        return java.time.Instant.parse(json.getAsString());
-                    }
-                })
+                .registerTypeAdapter(java.time.Instant.class,
+                        new com.google.gson.JsonDeserializer<java.time.Instant>() {
+                            @Override
+                            public java.time.Instant deserialize(com.google.gson.JsonElement json,
+                                    java.lang.reflect.Type typeOfT, com.google.gson.JsonDeserializationContext context)
+                                    throws com.google.gson.JsonParseException {
+                                return java.time.Instant.parse(json.getAsString());
+                            }
+                        })
                 .create();
     }
-    
+
     // Gửi yêu cầu tạo phòng lên server
     public Response createRoom(Integer ownerId) {
         try {
@@ -42,6 +46,7 @@ public class RoomController extends ClientController implements AutoCloseable {
         }
         return null;
     }
+
     // Gửi yêu cầu tham gia phòng lên server
     public Response joinRoom(Integer roomId, Integer userId) {
         try {
@@ -53,6 +58,7 @@ public class RoomController extends ClientController implements AutoCloseable {
         }
         return null;
     }
+
     // Gửi yêu cầu chỉnh sửa phòng lên server
     public Response editRoom(Integer roomId, Integer maxPlayer) {
         try {
@@ -67,6 +73,7 @@ public class RoomController extends ClientController implements AutoCloseable {
         }
         return null;
     }
+
     // Gửi yêu cầu rời phòng lên server
     public Response outRoom(Integer roomId, Integer userId) {
         try {
@@ -94,13 +101,14 @@ public class RoomController extends ClientController implements AutoCloseable {
         }
         return null;
     }
-    
+
     // Lấy phòng theo id (trả về Room hoặc null)
     public Room getRoomById(Integer roomId) {
         try {
             Response response = sendAndReceive(module, "GETBYID", roomId.toString());
             if (response != null && response.isSuccess()) {
-                // server may return a single Room or a JSON array with one element; try to parse either
+                // server may return a single Room or a JSON array with one element; try to
+                // parse either
                 Room room = parseRoom(response.getData());
                 return room;
             }
@@ -114,7 +122,8 @@ public class RoomController extends ClientController implements AutoCloseable {
     // Helper to parse list of rooms using configured gson (handles Instant)
     public List<Room> parseRooms(String json) {
         try {
-            return gson.fromJson(json, new com.google.gson.reflect.TypeToken<List<Room>>() {}.getType());
+            return gson.fromJson(json, new com.google.gson.reflect.TypeToken<List<Room>>() {
+            }.getType());
         } catch (Exception e) {
             // fallback: try parse single room into list
             try {
@@ -127,20 +136,24 @@ public class RoomController extends ClientController implements AutoCloseable {
         }
     }
 
-    // Helper to parse a single room; also handles when server returns an array with one element
+    // Helper to parse a single room; also handles when server returns an array with
+    // one element
     public Room parseRoom(String json) {
         try {
             return gson.fromJson(json, Room.class);
         } catch (Exception e) {
             try {
-                List<Room> list = gson.fromJson(json, new com.google.gson.reflect.TypeToken<List<Room>>() {}.getType());
-                if (list != null && !list.isEmpty()) return list.get(0);
+                List<Room> list = gson.fromJson(json, new com.google.gson.reflect.TypeToken<List<Room>>() {
+                }.getType());
+                if (list != null && !list.isEmpty())
+                    return list.get(0);
             } catch (Exception ex) {
                 System.err.println("Error parsing room: " + ex.getMessage());
             }
         }
         return null;
     }
+
     // Gửi yêu cầu làm mới trạng thái phòng lên server
     public Response refreshRoom(Integer roomId, boolean isPlaying) {
         try {
@@ -152,6 +165,7 @@ public class RoomController extends ClientController implements AutoCloseable {
         }
         return null;
     }
+
     // Gửi yêu cầu đá người chơi khỏi phòng lên server
     public Response kickPlayer(Integer roomId, Integer userId, Integer kickedPlayerId) {
         try {
@@ -163,6 +177,7 @@ public class RoomController extends ClientController implements AutoCloseable {
         }
         return null;
     }
+
     // Kiểm tra trạng thái alive của từng player trong phòng
     public void checkAlive(Integer roomId, List<Integer> playerIds) {
         for (Integer playerId : playerIds) {

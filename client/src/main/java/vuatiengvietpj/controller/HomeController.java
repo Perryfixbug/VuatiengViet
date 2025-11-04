@@ -15,7 +15,6 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.stage.Stage;
-import vuatiengvietpj.controller.UserController;
 import vuatiengvietpj.model.Response;
 import vuatiengvietpj.model.User;
 
@@ -25,6 +24,7 @@ public class HomeController {
     private int port = 2208;
     private Stage primaryStage;
     private User currentUser;
+    private String sessionId;
     private UserController userController; // thêm
 
     @FXML
@@ -40,8 +40,9 @@ public class HomeController {
     @FXML
     private TableView<User> onlineTable; // thêm
 
-    public void setCurrentUser(User user) {
+    public void setCurrentUserAndSession(User user, String sessionId) {
         this.currentUser = user;
+        this.sessionId = sessionId;
         // Update labels khi set user
         if (userNameLabel != null)
             userNameLabel.setText("Tên: " + user.getFullName());
@@ -68,10 +69,8 @@ public class HomeController {
     }
 
     private void setupOnlineTable() {
-        TableColumn<User, Long> idCol = new TableColumn<>("ID");
-        idCol.setPrefWidth(50);
-        idCol.setCellValueFactory(new PropertyValueFactory<>("id"));
 
+        onlineTable.getColumns().clear();
         TableColumn<User, String> nameCol = new TableColumn<>("Tên");
         nameCol.setPrefWidth(150);
         nameCol.setCellValueFactory(new PropertyValueFactory<>("fullName"));
@@ -80,11 +79,7 @@ public class HomeController {
         emailCol.setPrefWidth(200);
         emailCol.setCellValueFactory(new PropertyValueFactory<>("email"));
 
-        TableColumn<User, Long> scoreCol = new TableColumn<>("Điểm");
-        scoreCol.setPrefWidth(80);
-        scoreCol.setCellValueFactory(new PropertyValueFactory<>("totalScore"));
-
-        onlineTable.getColumns().addAll(idCol, nameCol, emailCol, scoreCol);
+        onlineTable.getColumns().addAll(nameCol, emailCol);
     }
 
     private void loadOnlineUsers() {
@@ -136,6 +131,7 @@ public class HomeController {
         if (controller instanceof ListRoomController) {
             ((ListRoomController) controller).setCurrentUserId(currentUser.getId());
             ((ListRoomController) controller).setPrimaryStage(primaryStage);
+            ((ListRoomController) controller).setSessionId(sessionId);
         }
         primaryStage.setScene(scene);
         primaryStage.setTitle("Room List");

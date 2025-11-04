@@ -50,12 +50,17 @@ public class UserController extends ServerController {
     }
 
     public Response handleGetIn4(String data) {
-        return createSuccessResponse(module, "GETIN4", gson.toJson(userDAO.findById(Integer .parseInt(data))));
+        return createSuccessResponse(module, "GETIN4", gson.toJson(userDAO.findById(Integer.parseInt(data))));
     }
 
     // check client còn sống k
     public Response handleCheckAlive(String data) {
-        return createSuccessResponse(module, "ALIVE", "Server know that you’re alive: " + data);
+        String x[] = data.trim().split(" ");
+        if (SessionManager.checkSessionId(x[1], Integer.parseInt(x[0]))) {
+            return createSuccessResponse(module, "ALIVE", "Server know that you’re alive: " + data);
+        } else {
+            return createErrorResponse(module, "ALIVE", "Phien lam viec het han vui long dang nhap lai");
+        }
     }
 
     // đăng nhập
@@ -63,10 +68,10 @@ public class UserController extends ServerController {
         try {
             User loginUser = gson.fromJson(data, User.class);
             System.out.println("UserController.handleLogin: attempting login for email=" + loginUser.getEmail());
-            
+
             User userChecker = userDAO.findByEmail(loginUser.getEmail());
             System.out.println("UserController.handleLogin: userChecker=" + (userChecker == null ? "null" : "found"));
-            
+
             if (userChecker == null) {
                 return createErrorResponse(module, "LOGIN", "Tai khoan hoac mat khau khong dung");
             } else if (BCrypt.checkpw(loginUser.getPassword(), userChecker.getPassword())) {
@@ -76,7 +81,8 @@ public class UserController extends ServerController {
                 }
                 SessionManager.createOrUpdate(userChecker, ip); // cập nhật session với IP của thiết bị mới
                 System.out.println("UserController.handleLogin: login successful for userId=" + userChecker.getId());
-                return createSuccessResponse(module, "LOGIN", gson.toJson(userChecker));
+                return createSuccessResponse(module, "LOGIN",
+                        gson.toJson(userChecker) + "###" + SessionManager.getSessionId(userChecker.getId()));
             } else {
                 return createErrorResponse(module, "LOGIN", "Tai khoan hoac mat khau khong dung");
             }
@@ -89,7 +95,7 @@ public class UserController extends ServerController {
 
     // đăng xuất
     public Response handleLogOut(String data) {
-        Integer  userId = Integer .parseInt(data);
+        Integer userId = Integer.parseInt(data);
         boolean ok = SessionManager.destroy(userId); // hủy session
         return ok ? createSuccessResponse(module, "LOGOUT", "OK")
                 : createErrorResponse(module, "LOGOUT", "Not logged in");

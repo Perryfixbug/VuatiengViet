@@ -52,6 +52,7 @@ public class ListRoomController {
 
     private Integer currentUserId; // ID người dùng hiện tại (sẽ được set từ nơi khác)
     private Stage primaryStage;
+    private String sessionId;
 
     public void setCurrentUserId(Integer userId) {
         this.currentUserId = userId;
@@ -59,6 +60,10 @@ public class ListRoomController {
 
     public void setPrimaryStage(Stage stage) {
         this.primaryStage = stage;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
     }
 
     @FXML
@@ -259,6 +264,7 @@ public class ListRoomController {
             if (controller instanceof PendingRoomController) {
                 PendingRoomController pendingController = (PendingRoomController) controller;
                 pendingController.setCurrentUserId(this.currentUserId);
+                pendingController.setSessionId(sessionId);
 
                 // Set callback để quay lại ListRoom khi rời phòng
                 pendingController.setOnRoomUpdated(() -> {
@@ -369,7 +375,7 @@ public class ListRoomController {
 
             Object controller = loader.getController();
             if (controller instanceof HomeController) {
-                ((HomeController) controller).setCurrentUser(loggedInUser);
+                ((HomeController) controller).setCurrentUserAndSession(loggedInUser, sessionId);
                 ((HomeController) controller).setPrimaryStage(primaryStage);
             }
             primaryStage.setScene(scene);

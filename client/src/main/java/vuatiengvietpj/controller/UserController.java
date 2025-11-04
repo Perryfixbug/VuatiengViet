@@ -14,7 +14,7 @@ import java.util.List;
 
 import vuatiengvietpj.model.Response;
 import vuatiengvietpj.model.User;
-
+import vuatiengvietpj.util.AliveCheckerService;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -63,6 +63,10 @@ public class UserController extends ClientController {
         this.primaryStage = stage;
     }
 
+    public void setStatusLabel(String str) {
+        statusLabel.setText(str);
+    }
+
     @FXML
     void onLogin(ActionEvent event) {
         String email = loginEmail.getText().trim();
@@ -82,19 +86,19 @@ public class UserController extends ClientController {
                     setUiEnabled(true);
                     if (resp != null && resp.isSuccess()) {
                         try {
-                            User loggedInUser = gson.fromJson(resp.getData(), User.class);
+                            String userAndSession[] = resp.getData().split("###");
+                            String strUser = userAndSession[0];
+                            String sessionId = userAndSession[1];
+                            User loggedInUser = gson.fromJson(strUser, User.class);
                             FXMLLoader loader = new FXMLLoader(getClass().getResource("/vuatiengvietpj/Home.fxml"));
                             Parent root = loader.load();
                             Scene scene = new Scene(root);
 
-                            Object controller = loader.getController();
-                            if (controller instanceof HomeController) {
-                                ((HomeController) controller).setCurrentUser(loggedInUser);
-                                ((HomeController) controller).setPrimaryStage(primaryStage);
-                            }
+                            // Start global alive check
+                            AliveCheckerService.getInstance().start(this, loggedInUser.getId(), sessionId,
+                                    primaryStage);
 
-                            primaryStage.setScene(scene);
-                            primaryStage.show();
+                            loadHome(loggedInUser, sessionId);
                         } catch (IOException e) {
                             statusLabel.setText("Lỗi load main scene: " + e.getMessage());
                         }
@@ -111,15 +115,47 @@ public class UserController extends ClientController {
         }).start();
     }
 
+    private void loadHome(User user, String sessionId) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/vuatiengvietpj/Home.fxml"));
+            Parent root = loader.load();
+            Scene scene = new Scene(root);
+            Object controller = loader.getController();
+            if (controller instanceof HomeController) {
+                ((HomeController) controller).setCurrentUserAndSession(user, sessionId);
+                ((HomeController) controller).setPrimaryStage(primaryStage);
+            }
+            primaryStage.setScene(scene);
+            primaryStage.setTitle("Home");
+            primaryStage.show();
+        } catch (Exception e) {
+            System.err.println("Lỗi load Home: " + e.getMessage());
+        }
+    }
+
     @FXML
     void onSignup(ActionEvent event) {
         String email = signupEmail.getText().trim();
         String name = signupName.getText().trim();
         String pw = signupPassword.getText();
+
         if (email.isEmpty() || name.isEmpty() || pw.isEmpty()) {
             statusLabel.setText("Vui lòng nhập đầy đủ thông tin");
             return;
         }
+
+        // Validate email
+        if (!email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")) {
+            statusLabel.setText("Email không đúng định dạng");
+            return;
+        }
+
+        // Validate password
+        if (pw.length() <= 5) {
+            statusLabel.setText("Mật khẩu phải trên 5 ký tự");
+            return;
+        }
+
         setUiEnabled(false);
         statusLabel.setText("Đang đăng ký...");
 
@@ -130,6 +166,10 @@ public class UserController extends ClientController {
                     setUiEnabled(true);
                     if (resp != null && resp.isSuccess()) {
                         statusLabel.setText("Đăng ký thành công! Vui lòng đăng nhập.");
+                        // clear thông tin sau khi đăng ký
+                        signupName.clear();
+                        signupEmail.clear();
+                        signupPassword.clear();
                         tabPane.getSelectionModel().select(0);
                     } else {
                         statusLabel.setText(resp == null ? "Lỗi kết nối" : resp.getData());
@@ -197,11 +237,11 @@ public class UserController extends ClientController {
         return null;
     }
 
-    public Response alive(String userId, String email) {
+    public Response sendAlive(Long userId, String sessionId) {
         try {
-            return sendAndReceive("USER", "ALIVE", userId + "," + email);
+            return sendAndReceive("USER", "ALIVE", userId + " " + sessionId);
         } catch (Exception e) {
-            System.err.println(e);
+            System.err.println("Loi send Alive" + e);
             e.printStackTrace();
         }
         return null;
@@ -240,6 +280,7 @@ public class UserController extends ClientController {
 
     public boolean logout(Integer userId) {
         try {
+            AliveCheckerService.getInstance().stop();
             Response response = sendAndReceive(module, "LOGOUT", userId.toString());
 
             if (response.isSuccess()) {

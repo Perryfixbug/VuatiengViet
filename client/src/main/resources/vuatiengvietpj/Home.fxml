@@ -25,7 +25,7 @@
                 <Label fx:id="userNameLabel" text="Tên: " style="-fx-font-size:14px; -fx-text-fill: #555;" />
                 <Label fx:id="userEmailLabel" text="Email: " style="-fx-font-size:14px; -fx-text-fill: #555;" />
                 <Label fx:id="userScoreLabel" text="Tổng thành tích: " style="-fx-font-size:14px; -fx-text-fill: #555;" />
-                <Button text="Bắt đầu trò chơi" fx:id="startBtn" onAction="#handleStart" style="-fx-font-size:14px; -fx-background-color: linear-gradient(to right, #00b894, #00cec9); -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" />
+                <Button text="Danh sách phòng chơi" fx:id="startBtn" onAction="#handleStart" style="-fx-font-size:14px; -fx-background-color: linear-gradient(to right, #00b894, #00cec9); -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" />
             </VBox>
 
             <!-- Phần phải: Danh sách user online -->

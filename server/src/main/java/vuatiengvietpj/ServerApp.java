@@ -13,6 +13,7 @@ import vuatiengvietpj.controller.DictionaryController;
 import vuatiengvietpj.model.Request;
 import vuatiengvietpj.model.Response;
 import vuatiengvietpj.model.Room;
+import vuatiengvietpj.util.SessionManager;
 
 public class ServerApp {
     // Inner class extends ServerController, override process() để delegate
@@ -88,19 +89,6 @@ public class ServerApp {
             while (true) {
                 Socket client = serverSocket.accept();
                 String ip = client.getInetAddress().toString();
-                // long now = Instant.now().toEpochMilli();
-                // Long prev = lastConnect.get(ip);
-                // if (prev != null && now - prev < MIN_MS_BETWEEN_CONNECT) {
-                // System.out.println("Throttling connection from " + ip + " (" + (now - prev) +
-                // "ms since last)");
-                // try {
-                // client.close();
-                // } catch (Exception ignored) {
-                // }
-                // continue;
-                // }
-                // lastConnect.put(ip, now);
-
                 new Thread(() -> {
                     try {
                         System.out.println("IP client: " + client.getInetAddress());

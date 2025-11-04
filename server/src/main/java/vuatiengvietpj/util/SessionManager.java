@@ -10,10 +10,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 public class SessionManager {
     private static final String KEY_PREFIX = "user:session:";
-    public static final String CH_EVENTS = "session:events"; // ✅ kênh log
     private static final int SESSION_TTL = ConfigManager.getInt("session.ttl", 3600); // seconds
     private static final Gson GSON = new GsonBuilder()
             .excludeFieldsWithoutExposeAnnotation() // bỏ qua createAt/updateAt nếu không @Expose
@@ -28,10 +28,14 @@ public class SessionManager {
             return false;
 
         String userJson = GSON.toJson(user);
+
+        String sessionId = UUID.randomUUID().toString();// gen sessionId ngãu nhiên
+
         Map<String, String> data = new HashMap<>();
         data.put("user", userJson);
         data.put("loginAtMs", String.valueOf(System.currentTimeMillis()));
         data.put("ip", ip);
+        data.put("sessionId", sessionId);
         try (Jedis jedis = RedisManager.getResource()) {
             if (jedis == null) {
                 System.err.println("SessionManager: Redis is not available, session will not be stored");
@@ -39,21 +43,44 @@ public class SessionManager {
             }
             jedis.hset(key(user.getId()), data);
             jedis.expire(key(user.getId()), SESSION_TTL);
-
-            // ✅ Publish sự kiện LOGIN
-            Map<String, Object> evt = new HashMap<>();
-            evt.put("type", "LOGIN");
-            evt.put("userId", user.getId());
-            evt.put("email", user.getEmail());
-            evt.put("loginAtMs", System.currentTimeMillis());
-            evt.put("ip", ip);
-            jedis.publish(CH_EVENTS, GSON.toJson(evt));
             return true;
         } catch (Exception e) {
             System.err.println("SessionManager.createOrUpdate error: " + e.getMessage());
             return false;
         }
 
+    }
+
+    public static String getSessionId(Integer userId) {
+        try (Jedis jedis = RedisManager.getResource()) {
+            if (jedis == null) {
+                System.out.println("Chua ket noi Redis");
+                return "ko co session";
+            }
+            return jedis.hget(key(userId), "sessionId");
+        } catch (Exception e) {
+            System.err.println("Loi lay sessionId: " + e.getMessage());
+            return "ko co session";
+        }
+    }
+
+    public static boolean checkSessionId(String needCheckSesssionId, Integer userId) {
+        if (needCheckSesssionId.equals("OK"))
+            return true;
+        try (Jedis jedis = RedisManager.getResource()) {
+            if (jedis == null) {
+                System.out.println("Chua ket noi Redis");
+                return false;
+            }
+            String sessionId = jedis.hget(key(userId), "sessionId");
+            if (sessionId == null || !needCheckSesssionId.equals(sessionId)) {
+                return false;
+            }
+            return true;
+        } catch (Exception e) {
+            System.err.println("Lỗi check sessionId: " + e.getMessage());
+            return false;
+        }
     }
 
     public static User getUser(Integer userId) {
@@ -119,15 +146,6 @@ public class SessionManager {
                     email = u.getEmail();
             }
             long del = jedis.del(k);
-
-            // ✅ Publish sự kiện LOGOUT
-            Map<String, Object> evt = new HashMap<>();
-            evt.put("type", "LOGOUT");
-            evt.put("userId", userId);
-            evt.put("email", email);
-            evt.put("ip", ip);
-            evt.put("logoutAtMs", System.currentTimeMillis());
-            jedis.publish(CH_EVENTS, GSON.toJson(evt));
             return del > 0;
         } catch (Exception e) {
             System.err.println("SessionManager.destroy error: " + e.getMessage());
