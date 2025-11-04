@@ -397,7 +397,7 @@ public class ListRoomController {
         }
 
         try (RoomController rc = new RoomController("localhost", 2208)) {
-            Response response = rc.createRoom(currentUserId);
+            Response response = rc.createRoom(currentUserId, null);
 
             if (response != null && response.isSuccess()) {
                 Room createdRoom = rc.parseRoom(response.getData());

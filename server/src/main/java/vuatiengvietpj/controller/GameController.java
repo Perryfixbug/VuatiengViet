@@ -15,6 +15,7 @@ import com.google.gson.JsonSerializer;
 import vuatiengvietpj.dao.ChallengePackDAO;
 import vuatiengvietpj.dao.DictionaryDAO;
 import vuatiengvietpj.dao.RoomDAO;
+import vuatiengvietpj.dao.UserDAO;
 import vuatiengvietpj.model.ChallengePack;
 import vuatiengvietpj.model.Player;
 import vuatiengvietpj.model.Request;
@@ -22,17 +23,23 @@ import vuatiengvietpj.model.Response;
 import vuatiengvietpj.model.Room;
 import vuatiengvietpj.model.ScoreBoard;
 import vuatiengvietpj.util.RoomManager;
+import vuatiengvietpj.util.RedisManager;
+import vuatiengvietpj.util.ConfigManager;
+import java.util.HashMap;
+import java.util.Map;
 
 public class GameController extends ServerController {
     private String module = "GAME";
     private Gson gson;
     private RoomDAO roomDAO;
+    private UserDAO userDAO;
     private ChallengePackDAO challengePackDAO;
     private DictionaryDAO dictionaryDAO;
 
     public GameController(Socket clientSocket) throws IOException {
         this.clientSocket = clientSocket;
         this.roomDAO = new RoomDAO();
+        this.userDAO = new UserDAO();
         this.challengePackDAO = new ChallengePackDAO();
         this.dictionaryDAO = new DictionaryDAO();
         this.gson = new GsonBuilder()
@@ -114,6 +121,26 @@ public class GameController extends ServerController {
             
             // Lấy lại room với challenge pack đã được gán
             room = roomDAO.getRoomById(roomId);
+
+            // Lưu đáp án và tần suất vào Redis cho room này
+            try {
+                int gameTtl = ConfigManager.getInt("cache.game.ttl", 90);
+                List<String> answers = challengePackDAO.getAnswersByChallengePackId(randomCpId);
+                if (answers != null && !answers.isEmpty()) {
+                    String answersKey = "game:room:" + roomId + ":cp:" + randomCpId + ":answers";
+                    RedisManager.setCache(answersKey, answers, gameTtl);
+
+                    Map<String, Integer> freqMap = new HashMap<>();
+                    for (String a : answers) {
+                        Integer f = dictionaryDAO.getWordFrequency(a);
+                        freqMap.put(a, f == null ? 0 : f);
+                    }
+                    String freqKey = "game:room:" + roomId + ":cp:" + randomCpId + ":freq";
+                    RedisManager.setCache(freqKey, freqMap, gameTtl);
+                }
+            } catch (Exception ex) {
+                System.err.println("GameController.START: Failed to cache answers/frequencies in Redis - " + ex.getMessage());
+            }
             
             // Broadcast room update để tất cả client biết game đã bắt đầu
             if (room != null) {
@@ -121,6 +148,30 @@ public class GameController extends ServerController {
                 System.out.println("GameController.START: Broadcasted game start to all members - roomId=" + roomId);
             }
             
+            // Khởi tạo scoreboard Redis: set điểm 0 cho tất cả người chơi hiện có
+            try {
+                redis.clients.jedis.Jedis jedis = vuatiengvietpj.util.RedisManager.getResource();
+                if (jedis != null) {
+                    try (jedis) {
+                        String zKey = "scoreboard:" + roomId;
+                        String hKey = "scoreboard:names:" + roomId;
+                        int gameTtl = ConfigManager.getInt("cache.game.ttl", 90);
+                        if (room != null && room.getPlayers() != null) {
+                            for (Player p : room.getPlayers()) {
+                                jedis.zadd(zKey, 0.0, "user:" + p.getUserId());
+                                if (p.getName() != null) {
+                                    jedis.hset(hKey, "user:" + p.getUserId(), p.getName());
+                                }
+                            }
+                        }
+                        jedis.expire(zKey, gameTtl);
+                        jedis.expire(hKey, gameTtl);
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println("GameController.START: Failed to init Redis scoreboard - " + ex.getMessage());
+            }
+
             // Trả về room với challenge pack để gửi cho tất cả client
             return createSuccessResponse(module, "START", gson.toJson(room));
         } catch (NumberFormatException e) {
@@ -175,11 +226,16 @@ public class GameController extends ServerController {
             }
             
             Integer  challengePackId = room.getCp().getId();
-            
-            // Lấy danh sách đáp án của ChallengePack
-            List<String> validAnswers = challengePackDAO.getAnswersByChallengePackId(challengePackId);
-            if (validAnswers.isEmpty()) {
-                return createErrorResponse(module, "SUBMIT", "Challenge pack không có đáp án");
+
+            // Lấy đáp án từ Redis thay vì DB
+            String answersKey = "game:room:" + roomId + ":cp:" + challengePackId + ":answers";
+            List<?> cachedAnswers = RedisManager.getCache(answersKey, List.class);
+            if (cachedAnswers == null || cachedAnswers.isEmpty()) {
+                return createErrorResponse(module, "SUBMIT", "Dữ liệu game không sẵn sàng. Vui lòng bắt đầu lại.");
+            }
+            List<String> validAnswers = new java.util.ArrayList<>();
+            for (Object o : cachedAnswers) {
+                if (o != null) validAnswers.add(o.toString());
             }
             
             // So sánh câu trả lời với danh sách đáp án (case-insensitive, normalize)
@@ -197,15 +253,24 @@ public class GameController extends ServerController {
                 return createErrorResponse(module, "SUBMIT", "Đáp án không đúng");
             }
             
-            // Tìm thấy đáp án đúng - Lấy frequency từ Dictionary
-            Integer  frequency = dictionaryDAO.getWordFrequency(matchedAnswer);
+            // Tìm thấy đáp án đúng - Lấy frequency từ Redis thay vì DB
+            String freqKey = "game:room:" + roomId + ":cp:" + challengePackId + ":freq";
+            java.util.Map<?,?> freqMapRaw = RedisManager.getCache(freqKey, java.util.Map.class);
+            int frequency = 0;
+            if (freqMapRaw != null) {
+                Object v = freqMapRaw.get(matchedAnswer);
+                if (v instanceof Number) {
+                    frequency = ((Number) v).intValue();
+                } else if (v instanceof String) {
+                    try { frequency = Integer.parseInt((String) v); } catch (Exception ignore) {}
+                }
+            }
             
-            // Lấy level từ ChallengePack
-            int level = room.getCp().getLevel();
+        
             
-            // Trả về frequency và level để client tự tính điểm
-            // Format: "matchedAnswer,frequency,level"
-            String result = matchedAnswer + "," + frequency + "," + level;
+            // Trả về frequency để client tự tính điểm
+            // Format: "matchedAnswer,frequency"
+            String result = matchedAnswer + "," + frequency;
             
             return createSuccessResponse(module, "SUBMIT", result);
         } catch (NumberFormatException e) {
@@ -242,8 +307,18 @@ public class GameController extends ServerController {
                 return createErrorResponse(module, "UPDATE", "Bạn không trong phòng này");
             }
             
-            // Cập nhật điểm của player trong database
-            roomDAO.updatePlayerScore(roomId, userId, points);
+            // Cập nhật điểm trong Redis ZSET (không ghi DB)
+            try {
+                redis.clients.jedis.Jedis jedis = vuatiengvietpj.util.RedisManager.getResource();
+                if (jedis != null) {
+                    try (jedis) {
+                        String zKey = "scoreboard:" + roomId;
+                        jedis.zincrby(zKey, points, "user:" + userId);
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println("GameController.UPDATE: Redis zincrby failed - " + ex.getMessage());
+            }
             
             // Broadcast scoreboard qua listener socket (không xung đột với request-response)
             broadcastScoreBoard(roomId);
@@ -285,8 +360,50 @@ public class GameController extends ServerController {
                 return createErrorResponse(module, "END", "Phòng không ở trạng thái playing");
             }
             
-            // Broadcast scoreboard lần cuối trước khi kết thúc game
-            broadcastScoreBoard(roomId);
+            // GHI điểm cuối từ Redis vào DB player trước khi kết thúc game
+            try {
+                redis.clients.jedis.Jedis jedis = vuatiengvietpj.util.RedisManager.getResource();
+                if (jedis != null) {
+                    try (jedis) {
+                        String zKey = "scoreboard:" + roomId;
+                        java.util.List<redis.clients.jedis.resps.Tuple> tuples = jedis.zrevrangeWithScores(zKey, 0, -1);
+                        if (tuples != null) {
+                            for (redis.clients.jedis.resps.Tuple t : tuples) {
+                                String member = t.getElement();
+                                double score = t.getScore();
+                                Integer uid = null;
+                                if (member != null && member.startsWith("user:")) {
+                                    try { uid = Integer.parseInt(member.substring(5)); } catch (Exception ignore) {}
+                                }
+                                if (uid == null) continue;
+                                roomDAO.setPlayerScore(roomId, uid, (int) Math.round(score));
+                            }
+                        }
+                        // Sau khi lưu DB, xóa luôn cache Redis (ZSET + HASH)
+                        try {
+                            String hKey = "scoreboard:names:" + roomId;
+                            jedis.del(zKey);
+                            jedis.del(hKey);
+                            System.out.println("GameController.END: Deleted Redis scoreboard keys for room " + roomId);
+                        } catch (Exception delEx) {
+                            System.err.println("GameController.END: Failed to delete Redis keys - " + delEx.getMessage());
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println("GameController.END: Persist final scores to DB failed - " + ex.getMessage());
+            }
+
+            // Broadcast scoreboard lần cuối để client thấy điểm (đọc từ DB player)
+            try {
+                Room roomForBoard = roomDAO.getRoomById(roomId);
+                ScoreBoard finalBoard = createScoreBoardFromRoom(roomForBoard);
+                if (finalBoard != null) {
+                    vuatiengvietpj.util.RoomUpdateManager.getInstance().broadcastScoreBoard(roomId, finalBoard);
+                }
+            } catch (Exception bEx) {
+                System.err.println("GameController.END: Failed DB-based scoreboard broadcast - " + bEx.getMessage());
+            }
             
             // CHỜ để đảm bảo broadcast đã được gửi và nhận đủ
             try {
@@ -294,6 +411,43 @@ public class GameController extends ServerController {
                 System.out.println("GameController.END: Waited 500ms for final scoreboard broadcast");
             } catch (InterruptedException e) {
                 System.err.println("GameController.END: Sleep interrupted - " + e.getMessage());
+            }
+
+            // CỘNG điểm trong phòng vào tổng điểm người chơi và lưu DB
+            try {
+                redis.clients.jedis.Jedis jedis = vuatiengvietpj.util.RedisManager.getResource();
+                if (jedis != null) {
+                    try (jedis) {
+                        String zKey = "scoreboard:" + roomId;
+                        java.util.List<redis.clients.jedis.resps.Tuple> tuples = jedis.zrevrangeWithScores(zKey, 0, -1);
+                        if (tuples != null) {
+                            for (redis.clients.jedis.resps.Tuple t : tuples) {
+                                String member = t.getElement(); // e.g. user:123
+                                double scoreD = t.getScore();
+                                Integer uid = null;
+                                if (member != null && member.startsWith("user:")) {
+                                    try { uid = Integer.parseInt(member.substring(5)); } catch (Exception ignore) {}
+                                }
+                                if (uid == null) continue;
+
+                                int addScore = (int) Math.round(scoreD);
+                                try {
+                                    vuatiengvietpj.model.User u = userDAO.findById(uid);
+                                    int current = (u != null && u.getTotalScore() != null) ? u.getTotalScore() : 0;
+                                    int updated = current + addScore;
+                                    boolean ok = userDAO.updateScore(uid, updated);
+                                    if (!ok) {
+                                        System.err.println("GameController.END: Failed to update totalScore for user " + uid);
+                                    }
+                                } catch (Exception exu) {
+                                    System.err.println("GameController.END: Error updating user totalScore: userId=" + uid + ", err=" + exu.getMessage());
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println("GameController.END: Failed to persist total scores - " + ex.getMessage());
             }
             
             // LƯU thông tin phòng cũ (trước khi xóa)
@@ -362,6 +516,8 @@ public class GameController extends ServerController {
                 vuatiengvietpj.util.RoomUpdateManager.getInstance().removeListener(roomId, p.getUserId());
             }
             
+            // Redis scoreboard đã bị xóa ở trên sau khi lưu DB
+
             // Trả về ID phòng mới cho client (CHỦ PHÒNG)
             String result = newRoom.getId().toString();
             return createSuccessResponse(module, "END", result);
@@ -371,6 +527,8 @@ public class GameController extends ServerController {
             return createErrorResponse(module, "END", "Lỗi khi kết thúc game: " + e.getMessage());
         }
     }
+
+    
 
     // Helper method: Kiểm tra user có trong room không
     private boolean isUserInRoom(Room room, Integer  userId) {
@@ -454,18 +612,55 @@ public class GameController extends ServerController {
         }
     }
 
-    // Broadcast scoreboard đến tất cả clients trong room
-    // SỬA: Dùng RoomUpdateManager thay vì RoomManager để broadcast qua listener socket
+    // Broadcast scoreboard đến tất cả clients trong room - lấy dữ liệu từ Redis
+    // Ưu tiên Redis ZSET (điểm) + HASH (tên); fallback tên từ Room nếu cần
     public void broadcastScoreBoard(Integer  roomId) {
-        Room room = roomDAO.getRoomById(roomId);
-        if (room == null) {
-            return;
+        ScoreBoard scoreBoard = new ScoreBoard();
+        scoreBoard.setRoomId(roomId);
+        scoreBoard.setUpdateAt(java.time.Instant.now());
+
+        java.util.List<Player> players = new java.util.ArrayList<>();
+
+        try {
+            redis.clients.jedis.Jedis jedis = vuatiengvietpj.util.RedisManager.getResource();
+            if (jedis != null) {
+                try (jedis) {
+                    String zKey = "scoreboard:" + roomId;
+                    String hKey = "scoreboard:names:" + roomId;
+                    java.util.List<redis.clients.jedis.resps.Tuple> tuples = jedis.zrevrangeWithScores(zKey, 0, -1);
+
+                    // Optional fallback room to fetch names if missing
+                    Room roomForNames = roomDAO.getRoomById(roomId);
+
+                    for (redis.clients.jedis.resps.Tuple t : tuples) {
+                        String member = t.getElement(); // e.g., user:123
+                        double score = t.getScore();
+                        Integer uid = null;
+                        if (member != null && member.startsWith("user:")) {
+                            try { uid = Integer.parseInt(member.substring(5)); } catch (Exception ignore) {}
+                        }
+                        if (uid == null) continue;
+
+                        String name = jedis.hget(hKey, member);
+                        if (name == null && roomForNames != null && roomForNames.getPlayers() != null) {
+                            for (Player p : roomForNames.getPlayers()) {
+                                if (java.util.Objects.equals(p.getUserId(), uid)) { name = p.getName(); break; }
+                            }
+                        }
+
+                        Player p = new Player();
+                        p.setUserId(uid);
+                        p.setName(name);
+                        p.setScore((int) Math.round(score));
+                        players.add(p);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("GameController.broadcastScoreBoard: Redis read failed - " + ex.getMessage());
         }
-        
-        ScoreBoard scoreBoard = createScoreBoardFromRoom(room);
-        if (scoreBoard != null) {
-            // Broadcast ScoreBoard qua listener socket (không xung đột với request-response)
-            vuatiengvietpj.util.RoomUpdateManager.getInstance().broadcastScoreBoard(roomId, scoreBoard);
-        }
+
+        scoreBoard.setPlayer(players);
+        vuatiengvietpj.util.RoomUpdateManager.getInstance().broadcastScoreBoard(roomId, scoreBoard);
     }
 }

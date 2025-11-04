@@ -2,38 +2,41 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="vuatiengvietpj.controller.HomeController" prefWidth="800" prefHeight="400" style="-fx-background-color: linear-gradient(to bottom, #74b9ff, #0984e3);">
+<BorderPane prefHeight="600.0" prefWidth="900.0" style="-fx-background-color: linear-gradient(to bottom, #74b9ff, #0984e3);"
+    xmlns:fx="http://javafx.com/fxml/1"
+    xmlns="http://javafx.com/javafx/25" fx:controller="vuatiengvietpj.controller.HomeController">
 
     <top>
-        <HBox spacing="10" style="-fx-padding:10; -fx-background-color: rgba(0,0,0,0.1);">
-            <Label text="🏆 Vua Tiếng Việt" style="-fx-font-size:18px; -fx-text-fill: white; -fx-font-weight: bold;" />
-            <Button text="Đăng xuất" fx:id="logoutBtn" onAction="#handleLogout" style="-fx-background-color: #e17055; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 5; -fx-background-radius: 5;" />
-        </HBox>
+        <VBox style="-fx-padding:10; -fx-background-color: rgba(0,0,0,0.1);">
+            <HBox prefWidth="946.0" spacing="10">
+                <Label style="-fx-font-size:24px; -fx-text-fill: white; -fx-font-weight: bold; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 2, 0, 0, 1);" text="🏆 Chào mừng đến với Vua Tiếng Việt! 🏆" />
+                <Button fx:id="logoutBtn" onAction="#handleLogout" style="-fx-background-color: #e17055; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 5; -fx-background-radius: 5; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 2, 0, 0, 1);" text="Đăng xuất" />
+            </HBox>
+            <Label style="-fx-font-size:14px; -fx-text-fill: rgba(255,255,255,0.8); -fx-font-style: italic;" text="Hãy tham gia phòng chơi để thử thách bản thân!" />
+        </VBox>
     </top>
 
     <center>
         <HBox spacing="20" style="-fx-padding:20;">
-            <!-- Phần trái: Thông tin user -->
-            <VBox spacing="15" alignment="CENTER" style="-fx-padding:20; -fx-background-color: rgba(255,255,255,0.9); -fx-border-radius: 10; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-width: 2;" HBox.hgrow="ALWAYS">
-                <Label text="Thông tin người dùng" style="-fx-font-size:16px; -fx-text-fill: #333; -fx-font-weight: bold;" />
-                <Label fx:id="userNameLabel" text="Tên: " style="-fx-font-size:14px; -fx-text-fill: #555;" />
-                <Label fx:id="userEmailLabel" text="Email: " style="-fx-font-size:14px; -fx-text-fill: #555;" />
-                <Label fx:id="userScoreLabel" text="Tổng thành tích: " style="-fx-font-size:14px; -fx-text-fill: #555;" />
-                <Button text="Danh sách phòng chơi" fx:id="startBtn" onAction="#handleStart" style="-fx-font-size:14px; -fx-background-color: linear-gradient(to right, #00b894, #00cec9); -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" />
+            <!-- Phần trái: Danh sách user online (bé lại) -->
+            <VBox prefHeight="512.0" prefWidth="250.0" spacing="10" style="-fx-padding:20; -fx-background-color: rgba(255,255,255,0.95); -fx-border-radius: 15; -fx-background-radius: 15; -fx-border-color: #ddd; -fx-border-width: 2; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 5, 0, 0, 3);" HBox.hgrow="ALWAYS">
+                <Label style="-fx-font-size:16px; -fx-text-fill: #333; -fx-font-weight: bold; -fx-text-alignment: center;" text="🌟 Người dùng online 🌟" />
+                <TableView fx:id="onlineTable" prefHeight="407.0" prefWidth="200.0" style="-fx-border-color: #ddd; -fx-background-color: rgba(255,255,255,0.9); -fx-border-radius: 5; -fx-background-radius: 5;">
+                </TableView>
             </VBox>
 
-            <!-- Phần phải: Danh sách user online -->
-            <VBox spacing="10" style="-fx-padding:20; -fx-background-color: rgba(255,255,255,0.9); -fx-border-radius: 10; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-width: 2;" HBox.hgrow="ALWAYS">
-                <Label text="Người dùng online" style="-fx-font-size:16px; -fx-text-fill: #333; -fx-font-weight: bold;" />
-                <TableView fx:id="onlineTable" prefHeight="200" style="-fx-border-color: #ddd;">
-
-                </TableView>
+            <!-- Phần phải: Thông tin user -->
+            <VBox alignment="CENTER" prefHeight="512.0" prefWidth="0.0" spacing="15" style="-fx-padding:20; -fx-background-color: rgba(255,255,255,0.95); -fx-border-radius: 15; -fx-background-radius: 15; -fx-border-color: #ddd; -fx-border-width: 2; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 5, 0, 0, 3);" HBox.hgrow="ALWAYS">
+                <Label style="-fx-font-size:18px; -fx-text-fill: #333; -fx-font-weight: bold; -fx-text-alignment: center;" text="👤 Thông tin của bạn 👤" />
+                <Label fx:id="userNameLabel" style="-fx-font-size:14px; -fx-text-fill: #555;" text="Tên: " />
+                <Label fx:id="userEmailLabel" style="-fx-font-size:14px; -fx-text-fill: #555;" text="Email: " />
+                <Label fx:id="userScoreLabel" style="-fx-font-size:14px; -fx-text-fill: #555;" text="Tổng thành tích: " />
+                <Button fx:id="startBtn" onAction="#handleStart" style="-fx-font-size:14px; -fx-background-color: linear-gradient(to right, #00b894, #00cec9); -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-background-radius: 20; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 3, 0, 0, 1);" text="🚀 Tham gia phòng chơi 🚀" />
             </VBox>
         </HBox>
     </center>

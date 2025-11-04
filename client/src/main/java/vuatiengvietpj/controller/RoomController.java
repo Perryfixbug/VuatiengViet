@@ -37,9 +37,10 @@ public class RoomController extends ClientController implements AutoCloseable {
     }
 
     // Gửi yêu cầu tạo phòng lên server
-    public Response createRoom(Integer ownerId) {
+    public Response createRoom(Integer ownerId, Integer roomId) {
         try {
-            return sendAndReceive(module, "CREATE", ownerId.toString());
+            return sendAndReceive(module, "CREATE", ownerId + "," + (roomId == null ? "null" : roomId.toString()));
+
         } catch (Exception e) {
             System.err.println("Error creating room: " + e.getMessage());
             e.printStackTrace();

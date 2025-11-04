@@ -7,32 +7,67 @@
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="vuatiengvietpj.controller.ListRoomController">
+<AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="900.0" style="-fx-background-color: lightaqua;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="vuatiengvietpj.controller.ListRoomController">
    <children>
-      <Label alignment="CENTER" graphicTextGap="5.0" layoutX="216.0" layoutY="53.0" text="Chọn Phòng Chơi" textAlignment="CENTER">
+      <AnchorPane prefHeight="80.0" prefWidth="900.0" style="-fx-background-color: #3498db;">
+         <children>
+            <Label alignment="CENTER" graphicTextGap="5.0" layoutX="306.0" layoutY="11.0" prefHeight="57.0" prefWidth="288.0" style="-fx-text-fill: white;" text="🏆 Vua Tiếng Việt" textAlignment="CENTER">
+               <font>
+                  <Font size="20.0" />
+               </font>
+            </Label>
+         </children>
+      </AnchorPane>
+      <VBox layoutX="60.0" layoutY="180.0" prefHeight="367.0" prefWidth="524.0" style="-fx-background-color: lightgray;">
+         <children>
+            <ScrollPane hbarPolicy="NEVER" prefHeight="442.0" prefWidth="510.0">
+               <content>
+                  <TableView fx:id="tblRoomList" prefHeight="390.0" prefWidth="514.0">
+                     <columns>
+                        <TableColumn prefWidth="127.20000153779984" text="Mã phòng" />
+                        <TableColumn prefWidth="116.0" text="Chủ phòng" />
+                        <TableColumn prefWidth="88.80006408691406" text="Số người" />
+                        <TableColumn minWidth="4.0" prefWidth="104.7999267578125" text="Trạng thái" />
+                     </columns>
+                  </TableView>
+               </content>
+            </ScrollPane>
+         </children>
+      </VBox>
+      <AnchorPane layoutX="606.0" layoutY="180.0" prefHeight="367.0" prefWidth="240.0" style="-fx-background-color: #66CCFF;">
+         <children>
+            <Button fx:id="btnCreateRoom" layoutX="20.0" layoutY="258.0" mnemonicParsing="false" onAction="#OnClickCreate" prefHeight="80.0" prefWidth="200.0" style="-fx-background-color: #FFA000;" text="Tạo phòng mới" textFill="WHITE">
+               <font>
+                  <Font name="System Bold" size="18.0" />
+               </font>
+            </Button>
+            <Button fx:id="btnQuickJoin" alignment="CENTER" layoutX="20.0" layoutY="154.0" mnemonicParsing="false" onAction="#OnClickJoin" prefHeight="80.0" prefWidth="200.0" style="-fx-background-color: #00BFA5;" text="Vào nhanh" textAlignment="CENTER" textFill="WHITE">
+               <font>
+                  <Font name="System Bold" size="18.0" />
+               </font>
+            </Button>
+            <Button fx:id="BtnSearch" layoutX="20.0" layoutY="94.0" mnemonicParsing="false" onAction="#OnClickSearch" prefHeight="26.0" prefWidth="200.0" style="-fx-background-color: #0288D1;" text="Tham gia theo mã phòng" textFill="WHITE">
+               <font>
+                  <Font size="14.0" />
+               </font>
+            </Button>
+            <TextField fx:id="txtSearchRoom" layoutX="20.0" layoutY="55.0" onAction="#searchRoom" prefHeight="26.0" prefWidth="200.0" promptText="Nhập mã phòng" />
+            <Label layoutX="84.0" layoutY="14.0" text="Tùy chọn" textFill="WHITE">
+               <font>
+                  <Font name="System Bold Italic" size="18.0" />
+               </font>
+            </Label>
+         </children>
+      </AnchorPane>
+      <Button fx:id="btnReload" layoutX="60.0" layoutY="113.0" mnemonicParsing="false" onAction="#OnClickReload" prefHeight="26.0" prefWidth="150.0" style="-fx-background-color: #33CCFF;" text="Tải lại danh sách phòng" textAlignment="CENTER" />
+      <Button fx:id="btnBack" alignment="CENTER" layoutX="695.0" layoutY="112.0" mnemonicParsing="false" onAction="#OnClickBack" prefHeight="26.0" prefWidth="150.0" style="-fx-background-color: #e74c3c; -fx-text-fill: white;" text="Quay về " />
+      <Label alignment="CENTER" graphicTextGap="5.0" layoutX="279.0" layoutY="96.0" prefHeight="58.0" prefWidth="341.0" style="-fx-text-fill: #3498db;" text="Chọn Phòng Chơi" textAlignment="CENTER">
          <font>
-            <Font size="20.0" />
+            <Font name="System Bold" size="36.0" />
          </font>
       </Label>
-      <TextField fx:id="txtSearchRoom" layoutX="67.0" layoutY="116.0" onAction="#searchRoom" prefHeight="26.0" prefWidth="186.0" promptText="Nhập mã phòng" />
-      <Button fx:id="btnQuickJoin" layoutX="360.0" layoutY="116.0" mnemonicParsing="false" onAction="#OnClickJoin" prefHeight="26.0" prefWidth="85.0" text="Vào nhanh" />
-      <Button fx:id="btnCreateRoom" layoutX="457.0" layoutY="116.0" mnemonicParsing="false" onAction="#OnClickCreate" prefHeight="26.0" prefWidth="85.0" text="Tạo phòng" />
-      <Button fx:id="BtnSearch" layoutX="263.0" layoutY="116.0" mnemonicParsing="false" onAction="#OnClickSearch" prefHeight="26.0" prefWidth="85.0" text="Tìm" />
-      <ScrollPane fx:id="scrollPaneTable" layoutX="67.0" layoutY="168.0" prefHeight="200.0" prefWidth="474.0">
-         <content>
-            <TableView fx:id="tblRoomList" prefHeight="200.0" prefWidth="473.0">
-               <columns>
-                  <TableColumn prefWidth="106.39996033906937" text="Mã phòng" />
-                  <TableColumn prefWidth="110.4000244140625" text="Chủ phòng" />
-                  <TableColumn prefWidth="77.59999084472656" text="Số người" />
-                  <TableColumn prefWidth="88.79998779296875" text="Trạng thái" />
-               </columns>
-            </TableView>
-         </content>
-      </ScrollPane>
-      <Button fx:id="btnBack" layoutX="67.0" layoutY="56.0" mnemonicParsing="false" onAction="#OnClickBack" text="Trở lại" />
-      <Button fx:id="btnReload" layoutX="491.0" layoutY="55.0" mnemonicParsing="false" onAction="#OnClickReload" text="Tải lại" />
    </children>
 </AnchorPane>
