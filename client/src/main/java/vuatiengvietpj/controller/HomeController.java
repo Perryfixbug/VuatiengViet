@@ -134,7 +134,7 @@ public class HomeController {
             ((ListRoomController) controller).setSessionId(sessionId);
         }
         primaryStage.setScene(scene);
-        primaryStage.setTitle("Room List");
+        primaryStage.setTitle("Home");
         primaryStage.show();
     }
 }
