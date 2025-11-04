@@ -59,8 +59,17 @@ public class RoomController extends ServerController {
             return createErrorResponse(module, "CREATE", "Du lieu khong hop le");
         }
         try {
-            Integer ownerId = Integer .parseInt(data);
-            Room room = createRoom(ownerId);
+            String[] parts = data.split(",");
+            Integer ownerId = null;
+            Integer roomId = null;
+            if (parts.length > 0 && parts[0] != null && !parts[0].isEmpty() && !parts[0].equalsIgnoreCase("null")) {
+                ownerId = Integer.parseInt(parts[0]);
+            }
+
+            if (parts.length > 1 && parts[1] != null && !parts[1].isEmpty() && !parts[1].equalsIgnoreCase("null")) {
+                roomId = Integer.parseInt(parts[1]);
+            }
+            Room room = createRoom(ownerId, roomId);
             if (room != null) {
                 return createSuccessResponse(module, "CREATE", gson.toJson(room));
             } else {
@@ -354,13 +363,15 @@ public class RoomController extends ServerController {
         return room;
     }
 
-    public Room createRoom(Integer ownerId) {
+    public Room createRoom(Integer ownerId, Integer roomId) {
         List<Player> players = new ArrayList<>();
         Player player = new Player();
         player.setUserId(ownerId);
         players.add(player);
 
-        Integer roomId = generateRoomId();
+        if (roomId == null) {
+            roomId = generateRoomId();
+        }
         Room room = new Room(roomId, ownerId, 4, Instant.now(), "pending", null, players);
         roomDAO.createRoom(room);
         return room;

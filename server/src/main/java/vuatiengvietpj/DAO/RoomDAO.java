@@ -197,6 +197,32 @@ public class RoomDAO extends DAO {
         }
     }
     
+    // Cập nhật ID của phòng (dùng khi tạo phòng mới sau END game)
+    public void updateRoomId(Integer oldRoomId, Integer newRoomId) {
+        try {
+            // 1. Cập nhật roomId trong bảng player
+            String updatePlayerSql = "UPDATE player SET roomId = ? WHERE roomId = ?";
+            try (PreparedStatement ps = con.prepareStatement(updatePlayerSql)) {
+                ps.setInt(1, newRoomId);
+                ps.setInt(2, oldRoomId);
+                int playerRows = ps.executeUpdate();
+                System.out.println("RoomDAO.updateRoomId: Updated " + playerRows + " players from room " + oldRoomId + " to " + newRoomId);
+            }
+            
+            // 2. Cập nhật id trong bảng room
+            String updateRoomSql = "UPDATE room SET id = ? WHERE id = ?";
+            try (PreparedStatement ps = con.prepareStatement(updateRoomSql)) {
+                ps.setInt(1, newRoomId);
+                ps.setInt(2, oldRoomId);
+                int roomRows = ps.executeUpdate();
+                System.out.println("RoomDAO.updateRoomId: Updated room ID from " + oldRoomId + " to " + newRoomId + " (" + roomRows + " rows)");
+            }
+        } catch (SQLException e) {
+            System.err.println("RoomDAO.updateRoomId: Error updating room ID from " + oldRoomId + " to " + newRoomId);
+            e.printStackTrace();
+        }
+    }
+    
     // Tạo một challenge pack cho phòng
     public void addChallengePackToRoom(Integer roomId, Integer cpId) {
         String sql = "UPDATE room SET challengePackId = ? WHERE id = ?";
